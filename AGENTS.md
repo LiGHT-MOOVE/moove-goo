@@ -33,13 +33,15 @@ SVG export must preserve vectors. Do not export a raster image.
 ## Implementation Constraints
 
 - Use a client component for all p5 integration because p5 depends on browser APIs.
-- Keep React as the source of truth for balls and editor state.
+- Keep Zustand/React as the source of truth for balls, connections, and editor state.
+- Persist the validated `GooProject` source of truth through the Zustand store using browser localStorage.
 - Use p5 only for interactive canvas rendering.
 - Avoid p5 SVG export plugins. Generate SVG from the same vector path geometry used for rendering.
 - Install `p5`; add p5 typings only if TypeScript requires them after install.
 - Keep geometry helpers independent from React and p5 so they can be tested separately.
 - Keep the UI dense, practical, and tool-like.
 - Do not reintroduce classic scalar-field metaballs, inverse-square fields, marching squares, contour sampling, or threshold controls.
+- Treat SVG path data as derived output only. Do not use render paths as project state.
 
 ## Data Model Defaults
 
@@ -59,6 +61,12 @@ type Connection = {
   bId: string;
   gooThickness: number;
 };
+
+type GooProject = {
+  version: 1;
+  balls: Ball[];
+  connections: Connection[];
+};
 ```
 
 Rules and defaults:
@@ -73,6 +81,9 @@ Rules and defaults:
 - Connection pairs are undirected; do not create duplicate A-B and B-A records.
 - Goo thickness is connection state, not ball state.
 - Removing a ball must remove every connection containing that ball.
+- JSON project import/export must use the `GooProject` shape.
+- Validate imported JSON with Zod, then normalize grid coordinates, radii, and goo thickness onto allowed ranges.
+- Reject malformed project JSON, duplicate IDs, missing connection endpoints, self-connections, and duplicate undirected links.
 
 ## Rendering Algorithm
 
@@ -98,12 +109,17 @@ Rules and defaults:
 - Provide a remove button for the selected ball.
 - Support `Delete` and `Backspace` to remove the selected ball.
 - Provide an export button that downloads a `512 x 512` SVG with `<path>` elements for the blob geometry.
+- The Goo panel should show editable formatted project JSON, not raw SVG path data.
+- JSON import should apply only when the user explicitly presses `Apply JSON`; the canvas must keep working while the draft JSON is invalid.
+- Provide project JSON formatting and download controls.
 
 ## Expected Code Changes
 
 - Keep `app/page.tsx` as a thin server component that renders the client editor.
 - Keep the client-side editor component in `app/components/GooBlobEditor.tsx`.
 - Keep pure geometry helpers for grid mapping, blob path creation, and SVG serialization in `app/lib/blobs.ts`.
+- Keep project schema, serialization, and Zod validation helpers in `app/lib/project.ts`.
+- Keep the persisted Zustand store in `app/store/gooStore.ts` with storage key `goo-project-v1`.
 - Update `app/layout.tsx` metadata to describe the goo blob editor.
 - Adjust `app/globals.css` only for app-level layout and Tailwind-compatible base styling.
 
@@ -121,6 +137,11 @@ Manually verify:
 - The canvas is exactly `512px x 512px`.
 - The visible grid aligns every `16px`.
 - Add, select, drag, resize, multiple connection assignment, per-connection goo thickness, and delete all work.
+- Reloading the page restores the last valid project from localStorage.
+- Reset restores the default project and updates persisted storage.
+- Editing valid project JSON and pressing `Apply JSON` updates the canvas and controls.
+- Invalid JSON, duplicate IDs, and invalid links show errors without changing the current canvas.
+- Downloaded project JSON can be pasted back into the Goo panel and applied.
 - Connected balls stay connected at long distances.
 - Changing goo thickness changes only bridge thickness, not ball radius.
 - Bridge curves attach tangent to the circles at visually correct angles.

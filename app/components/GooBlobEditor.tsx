@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import type P5 from "p5";
 import {
   CANVAS_SIZE,
   DEFAULT_GOO_THICKNESS,
-  DEFAULT_RADIUS,
   GOO_THICKNESS_STEP,
   MAX_GOO_THICKNESS,
   MAX_RADIUS,
@@ -21,28 +21,25 @@ import {
   gridToPixel,
   pixelToGrid,
 } from "@/app/lib/blobs";
-
-const INITIAL_BALLS: Ball[] = [
-  { id: "ball-1", gx: 11, gy: 16, radius: 72 },
-  { id: "ball-2", gx: 17, gy: 16, radius: 72 },
-  { id: "ball-3", gx: 14, gy: 10, radius: 52 },
-];
-
-const INITIAL_CONNECTIONS: Connection[] = [
-  {
-    id: "connection-1",
-    aId: "ball-1",
-    bId: "ball-2",
-    gooThickness: DEFAULT_GOO_THICKNESS,
-  },
-];
+import { parseGooProject, serializeGooProject } from "@/app/lib/project";
+import { useGooStore } from "@/app/store/gooStore";
 
 const HANDLE_RADIUS = 10;
 
 export default function GooBlobEditor() {
-  const [balls, setBalls] = useState<Ball[]>(INITIAL_BALLS);
-  const [connections, setConnections] = useState<Connection[]>(INITIAL_CONNECTIONS);
-  const [selectedBallId, setSelectedBallId] = useState<string | null>(INITIAL_BALLS[0].id);
+  const project = useGooStore((state) => state.project);
+  const selectedBallId = useGooStore((state) => state.selectedBallId);
+  const setProject = useGooStore((state) => state.setProject);
+  const resetProject = useGooStore((state) => state.resetProject);
+  const addBall = useGooStore((state) => state.addBall);
+  const updateBall = useGooStore((state) => state.updateBall);
+  const removeBall = useGooStore((state) => state.removeBall);
+  const addConnection = useGooStore((state) => state.addConnection);
+  const removeConnectionFromStore = useGooStore((state) => state.removeConnection);
+  const updateConnection = useGooStore((state) => state.updateConnection);
+  const selectBall = useGooStore((state) => state.selectBall);
+  const balls = project.balls;
+  const connections = project.connections;
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
   const p5Ref = useRef<P5 | null>(null);
   const ballsRef = useRef<Ball[]>(balls);
@@ -50,6 +47,9 @@ export default function GooBlobEditor() {
   const blobPathsRef = useRef<BlobPath[]>(generateBlobPaths(balls, connections));
   const selectedBallIdRef = useRef<string | null>(selectedBallId);
   const draggingBallIdRef = useRef<string | null>(null);
+  const [projectJson, setProjectJson] = useState(() => serializeGooProject(project));
+  const [projectJsonDirty, setProjectJsonDirty] = useState(false);
+  const [projectJsonError, setProjectJsonError] = useState<string | null>(null);
 
   const selectedBall = balls.find((ball) => ball.id === selectedBallId) ?? null;
   const selectedConnections = useMemo(
@@ -79,44 +79,16 @@ export default function GooBlobEditor() {
     () => generateBlobPaths(balls, connections),
     [balls, connections],
   );
+  const currentProjectJson = useMemo(() => serializeGooProject(project), [project]);
+  const visibleProjectJson = projectJsonDirty ? projectJson : currentProjectJson;
 
-  const refreshBlobPaths = useCallback((nextBalls: Ball[], nextConnections: Connection[]) => {
-    ballsRef.current = nextBalls;
-    connectionsRef.current = nextConnections;
-    blobPathsRef.current = generateBlobPaths(nextBalls, nextConnections);
-    p5Ref.current?.redraw();
-  }, []);
-
-  const setSelected = useCallback((id: string | null) => {
-    selectedBallIdRef.current = id;
-    setSelectedBallId(id);
-    p5Ref.current?.redraw();
-  }, []);
-
-  const setBallsAndRefresh = useCallback(
-    (updater: (currentBalls: Ball[]) => Ball[]) => {
-      setBalls((currentBalls) => {
-        const nextBalls = updater(currentBalls);
-
-        refreshBlobPaths(nextBalls, connectionsRef.current);
-
-        return nextBalls;
-      });
+  const setSelected = useCallback(
+    (id: string | null) => {
+      selectedBallIdRef.current = id;
+      selectBall(id);
+      p5Ref.current?.redraw();
     },
-    [refreshBlobPaths],
-  );
-
-  const setConnectionsAndRefresh = useCallback(
-    (updater: (currentConnections: Connection[]) => Connection[]) => {
-      setConnections((currentConnections) => {
-        const nextConnections = updater(currentConnections);
-
-        refreshBlobPaths(ballsRef.current, nextConnections);
-
-        return nextConnections;
-      });
-    },
-    [refreshBlobPaths],
+    [selectBall],
   );
 
   const removeSelectedBall = useCallback(() => {
@@ -126,17 +98,9 @@ export default function GooBlobEditor() {
       return;
     }
 
-    const nextBalls = ballsRef.current.filter((ball) => ball.id !== selectedId);
-    const nextConnections = connectionsRef.current.filter(
-      (connection) => connection.aId !== selectedId && connection.bId !== selectedId,
-    );
-
-    setBalls(nextBalls);
-    setConnections(nextConnections);
-    refreshBlobPaths(nextBalls, nextConnections);
-    setSelected(null);
+    removeBall(selectedId);
     draggingBallIdRef.current = null;
-  }, [refreshBlobPaths, setSelected]);
+  }, [removeBall]);
 
   const addBallAtNextOpenCell = useCallback(() => {
     const occupiedCells = new Set(ballsRef.current.map((ball) => `${ball.gx},${ball.gy}`));
@@ -152,18 +116,8 @@ export default function GooBlobEditor() {
       }
     }
 
-    const id = createBallId();
-    setBallsAndRefresh((currentBalls) => [
-      ...currentBalls,
-      {
-        id,
-        gx: target.gx,
-        gy: target.gy,
-        radius: DEFAULT_RADIUS,
-      },
-    ]);
-    setSelected(id);
-  }, [setBallsAndRefresh, setSelected]);
+    addBall(createBallId(), target.gx, target.gy);
+  }, [addBall]);
 
   const updateSelectedRadius = useCallback(
     (radius: number) => {
@@ -173,13 +127,9 @@ export default function GooBlobEditor() {
         return;
       }
 
-      setBallsAndRefresh((currentBalls) =>
-        currentBalls.map((ball) =>
-          ball.id === selectedId ? { ...ball, radius: clampRadius(radius) } : ball,
-        ),
-      );
+      updateBall(selectedId, (ball) => ({ ...ball, radius: clampRadius(radius) }));
     },
-    [setBallsAndRefresh],
+    [updateBall],
   );
 
   const addConnectionFromSelected = useCallback(
@@ -190,80 +140,112 @@ export default function GooBlobEditor() {
         return;
       }
 
-      setConnectionsAndRefresh((currentConnections) => {
-        if (
-          currentConnections.some((connection) =>
-            connectionIncludesPair(connection, selectedId, targetId),
-          )
-        ) {
-          return currentConnections;
-        }
-
-        return [
-          ...currentConnections,
-          {
-            id: createConnectionId(),
-            aId: selectedId,
-            bId: targetId,
-            gooThickness: DEFAULT_GOO_THICKNESS,
-          },
-        ];
+      addConnection({
+        id: createConnectionId(),
+        aId: selectedId,
+        bId: targetId,
+        gooThickness: DEFAULT_GOO_THICKNESS,
       });
     },
-    [setConnectionsAndRefresh],
+    [addConnection],
   );
 
   const removeConnection = useCallback(
     (connectionId: string) => {
-      setConnectionsAndRefresh((currentConnections) =>
-        currentConnections.filter((connection) => connection.id !== connectionId),
-      );
+      removeConnectionFromStore(connectionId);
     },
-    [setConnectionsAndRefresh],
+    [removeConnectionFromStore],
   );
 
   const updateConnectionGooThickness = useCallback(
     (connectionId: string, value: number) => {
-      const nextGooThickness = clampGooThickness(value);
-
-      setConnectionsAndRefresh((currentConnections) =>
-        currentConnections.map((connection) =>
-          connection.id === connectionId
-            ? { ...connection, gooThickness: nextGooThickness }
-            : connection,
-        ),
-      );
+      updateConnection(connectionId, (connection) => ({
+        ...connection,
+        gooThickness: clampGooThickness(value),
+      }));
     },
-    [setConnectionsAndRefresh],
+    [updateConnection],
   );
 
   const resetSketch = useCallback(() => {
-    const nextBalls = INITIAL_BALLS.map((ball) => ({ ...ball }));
-    const nextConnections = INITIAL_CONNECTIONS.map((connection) => ({ ...connection }));
+    resetProject();
+    draggingBallIdRef.current = null;
+    setProjectJsonError(null);
+    setProjectJsonDirty(false);
+  }, [resetProject]);
 
-    setBalls(nextBalls);
-    setConnections(nextConnections);
-    refreshBlobPaths(nextBalls, nextConnections);
-    setSelected(INITIAL_BALLS[0].id);
-  }, [refreshBlobPaths, setSelected]);
+  const applyProjectJson = useCallback(() => {
+    const result = parseGooProject(visibleProjectJson);
+
+    if (!result.ok) {
+      setProjectJsonError(result.error);
+      return;
+    }
+
+    setProject(result.project);
+    setProjectJson(serializeGooProject(result.project));
+    setProjectJsonDirty(false);
+    setProjectJsonError(null);
+    draggingBallIdRef.current = null;
+  }, [setProject, visibleProjectJson]);
+
+  const formatProjectJson = useCallback(() => {
+    const result = parseGooProject(visibleProjectJson);
+
+    if (!result.ok) {
+      setProjectJsonError(result.error);
+      return;
+    }
+
+    setProjectJson(serializeGooProject(result.project));
+    setProjectJsonDirty(true);
+    setProjectJsonError(null);
+  }, [visibleProjectJson]);
+
+  const downloadProjectJson = useCallback(() => {
+    downloadTextFile(
+      "goo-project.json",
+      "application/json;charset=utf-8",
+      serializeGooProject(project),
+    );
+  }, [project]);
+
+  const updateProjectJsonDraft = useCallback(
+    (value: string) => {
+      setProjectJson(value);
+      setProjectJsonDirty(true);
+
+      if (projectJsonError) {
+        setProjectJsonError(null);
+      }
+    },
+    [projectJsonError],
+  );
+
+  const handleProjectJsonKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+        event.preventDefault();
+        applyProjectJson();
+      }
+    },
+    [applyProjectJson],
+  );
 
   const exportSvg = useCallback(() => {
-    const svg = blobPathsToSvg(blobPathsRef.current);
-    const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-
-    link.href = url;
-    link.download = "goo-blobs.svg";
-    document.body.append(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+    downloadTextFile(
+      "goo-blobs.svg",
+      "image/svg+xml;charset=utf-8",
+      blobPathsToSvg(blobPathsRef.current),
+    );
   }, []);
 
   useEffect(() => {
-    refreshBlobPaths(balls, connections);
-  }, [balls, blobPaths, connections, refreshBlobPaths]);
+    ballsRef.current = balls;
+    connectionsRef.current = connections;
+    blobPathsRef.current = blobPaths;
+    p5Ref.current?.redraw();
+  }, [balls, blobPaths, connections]);
 
   useEffect(() => {
     selectedBallIdRef.current = selectedBallId;
@@ -271,12 +253,24 @@ export default function GooBlobEditor() {
   }, [selectedBallId]);
 
   useEffect(() => {
+    if (!selectedBallId || balls.some((ball) => ball.id === selectedBallId)) {
+      return;
+    }
+
+    setSelected(balls[0]?.id ?? null);
+  }, [balls, selectedBallId, setSelected]);
+
+  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Delete" && event.key !== "Backspace") {
         return;
       }
 
-      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement) {
+      if (
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLSelectElement ||
+        event.target instanceof HTMLTextAreaElement
+      ) {
         return;
       }
 
@@ -336,17 +330,7 @@ export default function GooBlobEditor() {
             return;
           }
 
-          const id = createBallId();
-
-          setBallsAndRefresh((currentBalls) => [
-            ...currentBalls,
-            {
-              id,
-              ...gridPosition,
-              radius: DEFAULT_RADIUS,
-            },
-          ]);
-          setSelected(id);
+          addBall(createBallId(), gridPosition.gx, gridPosition.gy);
         };
 
         p.mouseDragged = () => {
@@ -358,11 +342,7 @@ export default function GooBlobEditor() {
 
           const gridPosition = pixelToGrid(p.mouseX, p.mouseY);
 
-          setBallsAndRefresh((currentBalls) =>
-            currentBalls.map((ball) =>
-              ball.id === draggingId ? { ...ball, ...gridPosition } : ball,
-            ),
-          );
+          updateBall(draggingId, (ball) => ({ ...ball, ...gridPosition }));
         };
 
         p.mouseReleased = () => {
@@ -381,16 +361,16 @@ export default function GooBlobEditor() {
       sketchInstance?.remove();
       p5Ref.current = null;
     };
-  }, [setBallsAndRefresh, setSelected]);
+  }, [addBall, setSelected, updateBall]);
 
   return (
     <main className="min-h-full bg-[#f5f4ef] text-slate-950">
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-5 px-5 py-6 lg:px-8">
         <header className="flex flex-col gap-3 border-b border-slate-300 pb-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-normal text-slate-950">
-              Goo Blob Editor
-            </h1>
+            <h2 className="text-2xl font-semibold tracking-normal text-slate-950">
+              moove-goo
+            </h2>
           </div>
           <div className="flex flex-wrap gap-2">
             <button className="editor-button editor-button-secondary" onClick={resetSketch} type="button">
@@ -402,11 +382,65 @@ export default function GooBlobEditor() {
           </div>
         </header>
 
-        <section className="grid flex-1 gap-5 lg:grid-cols-[512px_minmax(260px,1fr)]">
-          <div className="overflow-auto">
+        <section className="grid flex-1 gap-5 lg:grid-cols-[512px_minmax(0,1fr)]">
+          <div className="flex max-w-full flex-col gap-4 overflow-x-auto lg:overflow-visible">
             <div className="canvas-shell">
               <div ref={canvasHostRef} className="h-[512px] w-[512px]" />
             </div>
+
+            <section className="control-panel w-[512px] max-w-full">
+              <h2 className="text-sm font-semibold uppercase tracking-normal text-slate-700">
+                Project
+              </h2>
+
+              <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+                <Metric label="Balls" value={balls.length} />
+                <Metric label="Links" value={connections.length} />
+                <Metric label="Paths" value={blobPaths.length} />
+                <Metric label="Selected" value={selectedConnections.length} />
+              </div>
+
+              <label className="mt-4 grid gap-2 text-sm font-medium text-slate-700">
+                Project JSON
+                <textarea
+                  className="project-json-editor"
+                  onChange={(event) => updateProjectJsonDraft(event.target.value)}
+                  onKeyDown={handleProjectJsonKeyDown}
+                  spellCheck={false}
+                  value={visibleProjectJson}
+                />
+              </label>
+
+              {projectJsonError ? (
+                <p className="mt-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                  {projectJsonError}
+                </p>
+              ) : null}
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  className="editor-button editor-button-primary h-9"
+                  onClick={applyProjectJson}
+                  type="button"
+                >
+                  Apply JSON
+                </button>
+                <button
+                  className="editor-button editor-button-secondary h-9"
+                  onClick={formatProjectJson}
+                  type="button"
+                >
+                  Format
+                </button>
+                <button
+                  className="editor-button editor-button-secondary h-9"
+                  onClick={downloadProjectJson}
+                  type="button"
+                >
+                  Download JSON
+                </button>
+              </div>
+            </section>
           </div>
 
           <aside className="flex flex-col gap-4">
@@ -582,21 +616,6 @@ export default function GooBlobEditor() {
               )}
             </section>
 
-            <section className="control-panel">
-              <h2 className="text-sm font-semibold uppercase tracking-normal text-slate-700">
-                Goo
-              </h2>
-
-              <div className="mt-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
-                <Metric label="Balls" value={balls.length} />
-                <Metric label="Links" value={connections.length} />
-                <Metric label="Paths" value={blobPaths.length} />
-                <Metric label="Selected" value={selectedConnections.length} />
-              </div>
-              <code className="mt-4 block max-h-40 overflow-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
-                {blobPaths[0]?.d ?? "No path yet"}
-              </code>
-            </section>
           </aside>
         </section>
       </div>
@@ -707,6 +726,19 @@ function otherConnectionBallId(connection: Connection, ballId: string): string {
 
 function ballLabel(ball: Ball, balls: Ball[]): string {
   return `Ball ${balls.findIndex((candidate) => candidate.id === ball.id) + 1}`;
+}
+
+function downloadTextFile(filename: string, type: string, content: string) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 function createBallId(): string {
