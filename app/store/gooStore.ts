@@ -1,68 +1,73 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { DEFAULT_GOO_THICKNESS, type Ball, type Connection } from "@/app/lib/blobs";
-import { DEFAULT_PROJECT, type GooProject, createDefaultBall } from "@/app/lib/project";
+import { DEFAULT_GOO_THICKNESS, type Blob, type Connection } from "@/app/lib/blobs";
+import {
+  DEFAULT_PROJECT,
+  type GooProject,
+  createDefaultBlob,
+  normalizeStoredGooProject,
+} from "@/app/lib/project";
 
 type GooStore = {
   project: GooProject;
-  selectedBallId: string | null;
+  selectedBlobId: string | null;
   setProject: (project: GooProject) => void;
   resetProject: () => void;
-  addBall: (id: string, gx: number, gy: number) => void;
-  updateBall: (id: string, updater: (ball: Ball) => Ball) => void;
-  removeBall: (id: string) => void;
+  addBlob: (id: string, gx: number, gy: number) => void;
+  updateBlob: (id: string, updater: (blob: Blob) => Blob) => void;
+  removeBlob: (id: string) => void;
   addConnection: (connection: Omit<Connection, "gooThickness"> & Partial<Pick<Connection, "gooThickness">>) => void;
   removeConnection: (id: string) => void;
   updateConnection: (id: string, updater: (connection: Connection) => Connection) => void;
-  selectBall: (id: string | null) => void;
+  selectBlob: (id: string | null) => void;
 };
 
 export const useGooStore = create<GooStore>()(
   persist(
     (set, get) => ({
       project: DEFAULT_PROJECT,
-      selectedBallId: DEFAULT_PROJECT.balls[0]?.id ?? null,
+      selectedBlobId: DEFAULT_PROJECT.blobs[0]?.id ?? null,
       setProject: (project) =>
         set((state) => ({
           project,
-          selectedBallId: project.balls.some((ball) => ball.id === state.selectedBallId)
-            ? state.selectedBallId
-            : project.balls[0]?.id ?? null,
+          selectedBlobId: project.blobs.some((blob) => blob.id === state.selectedBlobId)
+            ? state.selectedBlobId
+            : project.blobs[0]?.id ?? null,
         })),
       resetProject: () =>
         set({
           project: DEFAULT_PROJECT,
-          selectedBallId: DEFAULT_PROJECT.balls[0]?.id ?? null,
+          selectedBlobId: DEFAULT_PROJECT.blobs[0]?.id ?? null,
         }),
-      addBall: (id, gx, gy) =>
+      addBlob: (id, gx, gy) =>
         set((state) => ({
           project: {
             ...state.project,
-            balls: [...state.project.balls, createDefaultBall(id, gx, gy)],
+            blobs: [...state.project.blobs, createDefaultBlob(id, gx, gy)],
           },
-          selectedBallId: id,
+          selectedBlobId: id,
         })),
-      updateBall: (id, updater) =>
+      updateBlob: (id, updater) =>
         set((state) => ({
           project: {
             ...state.project,
-            balls: state.project.balls.map((ball) => (ball.id === id ? updater(ball) : ball)),
+            blobs: state.project.blobs.map((blob) => (blob.id === id ? updater(blob) : blob)),
           },
         })),
-      removeBall: (id) =>
+      removeBlob: (id) =>
         set((state) => {
-          const nextBalls = state.project.balls.filter((ball) => ball.id !== id);
+          const nextBlobs = state.project.blobs.filter((blob) => blob.id !== id);
 
           return {
             project: {
               ...state.project,
-              balls: nextBalls,
+              blobs: nextBlobs,
               connections: state.project.connections.filter(
                 (connection) => connection.aId !== id && connection.bId !== id,
               ),
             },
-            selectedBallId:
-              state.selectedBallId === id ? nextBalls[0]?.id ?? null : state.selectedBallId,
+            selectedBlobId:
+              state.selectedBlobId === id ? nextBlobs[0]?.id ?? null : state.selectedBlobId,
           };
         }),
       addConnection: (connection) =>
@@ -108,17 +113,34 @@ export const useGooStore = create<GooStore>()(
             ),
           },
         })),
-      selectBall: (id) => {
+      selectBlob: (id) => {
         const { project } = get();
 
         set({
-          selectedBallId: id && project.balls.some((ball) => ball.id === id) ? id : null,
+          selectedBlobId: id && project.blobs.some((blob) => blob.id === id) ? id : null,
         });
       },
     }),
     {
       name: "goo-project-v1",
       partialize: (state) => ({ project: state.project }),
+      version: 2,
+      migrate: (persistedState) => {
+        const state = persistedState as Partial<GooStore> & {
+          project?: unknown;
+          selectedBallId?: string | null;
+        };
+        const project = normalizeStoredGooProject(state.project);
+        const selectedId = state.selectedBlobId ?? state.selectedBallId ?? null;
+
+        return {
+          ...state,
+          project,
+          selectedBlobId: project.blobs.some((blob) => blob.id === selectedId)
+            ? selectedId
+            : project.blobs[0]?.id ?? null,
+        };
+      },
     },
   ),
 );

@@ -89,7 +89,7 @@ textarea {
   background: #ffe4e6;
 }
 
-.ball-row {
+.blob-row {
   display: flex;
   min-height: 42px;
   align-items: center;
@@ -102,11 +102,11 @@ textarea {
   text-align: left;
 }
 
-.ball-row:hover {
+.blob-row:hover {
   border-color: #94a3b8;
 }
 
-.ball-row-selected {
+.blob-row-selected {
   border-color: #0f766e;
   background: #f0fdfa;
 }

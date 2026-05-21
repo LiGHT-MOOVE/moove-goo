@@ -1,4 +1,4 @@
-export type Ball = {
+export type Blob = {
   id: string;
   gx: number;
   gy: number;
@@ -19,7 +19,7 @@ export type Point = {
 
 export type BlobPath = {
   id: string;
-  ballIds: string[];
+  blobIds: string[];
   connectionId: string | null;
   d: string;
 };
@@ -60,35 +60,35 @@ export function gridToPixel(gx: number, gy: number): Point {
   };
 }
 
-export function pixelToGrid(x: number, y: number): Pick<Ball, "gx" | "gy"> {
+export function pixelToGrid(x: number, y: number): Pick<Blob, "gx" | "gy"> {
   return {
     gx: clampGridCoordinate((x - CELL_OFFSET) / GRID_STEP),
     gy: clampGridCoordinate((y - CELL_OFFSET) / GRID_STEP),
   };
 }
 
-export function generateBlobPaths(balls: Ball[], connections: Connection[]): BlobPath[] {
-  const ballById = new Map(balls.map((ball) => [ball.id, ball]));
-  const circlePaths = balls.map((ball) => ({
-    id: ball.id,
-    ballIds: [ball.id],
+export function generateBlobPaths(blobs: Blob[], connections: Connection[]): BlobPath[] {
+  const blobById = new Map(blobs.map((blob) => [blob.id, blob]));
+  const circlePaths = blobs.map((blob) => ({
+    id: blob.id,
+    blobIds: [blob.id],
     connectionId: null,
-    d: circlePath(gridToPixel(ball.gx, ball.gy), ball.radius),
+    d: circlePath(gridToPixel(blob.gx, blob.gy), blob.radius),
   }));
   const bridgePaths = connections.flatMap((connection) => {
-    const ballA = ballById.get(connection.aId);
-    const ballB = ballById.get(connection.bId);
+    const blobA = blobById.get(connection.aId);
+    const blobB = blobById.get(connection.bId);
 
-    if (!ballA || !ballB) {
+    if (!blobA || !blobB) {
       return [];
     }
 
     return [
       {
         id: connection.id,
-        ballIds: [ballA.id, ballB.id],
+        blobIds: [blobA.id, blobB.id],
         connectionId: connection.id,
-        d: connectedPairPath(ballA, ballB, connection.gooThickness),
+        d: connectedPairPath(blobA, blobB, connection.gooThickness),
       },
     ];
   });
@@ -110,14 +110,14 @@ export function blobPathsToSvg(paths: BlobPath[]): string {
   ].join("\n");
 }
 
-function connectedPairPath(ballA: Ball, ballB: Ball, gooThickness: number): string {
-  const centerA = gridToPixel(ballA.gx, ballA.gy);
-  const centerB = gridToPixel(ballB.gx, ballB.gy);
+function connectedPairPath(blobA: Blob, blobB: Blob, gooThickness: number): string {
+  const centerA = gridToPixel(blobA.gx, blobA.gy);
+  const centerB = gridToPixel(blobB.gx, blobB.gy);
   const dx = centerB.x - centerA.x;
   const dy = centerB.y - centerA.y;
   const distance = Math.hypot(dx, dy);
 
-  if (distance < EPSILON || distance <= Math.abs(ballA.radius - ballB.radius)) {
+  if (distance < EPSILON || distance <= Math.abs(blobA.radius - blobB.radius)) {
     return "";
   }
 
@@ -126,24 +126,24 @@ function connectedPairPath(ballA: Ball, ballB: Ball, gooThickness: number): stri
   const thickness = clampGooThickness(gooThickness);
   const centerAngle = Math.atan2(dy, dx);
   const overlapAngleA =
-    distance < ballA.radius + ballB.radius
+    distance < blobA.radius + blobB.radius
       ? Math.acos(
           clampUnit(
-            (ballA.radius * ballA.radius + distance * distance - ballB.radius * ballB.radius) /
-              (2 * ballA.radius * distance),
+            (blobA.radius * blobA.radius + distance * distance - blobB.radius * blobB.radius) /
+              (2 * blobA.radius * distance),
           ),
         )
       : 0;
   const overlapAngleB =
-    distance < ballA.radius + ballB.radius
+    distance < blobA.radius + blobB.radius
       ? Math.acos(
           clampUnit(
-            (ballB.radius * ballB.radius + distance * distance - ballA.radius * ballA.radius) /
-              (2 * ballB.radius * distance),
+            (blobB.radius * blobB.radius + distance * distance - blobA.radius * blobA.radius) /
+              (2 * blobB.radius * distance),
           ),
         )
       : 0;
-  const tangentAngle = Math.acos(clampUnit((ballA.radius - ballB.radius) / distance));
+  const tangentAngle = Math.acos(clampUnit((blobA.radius - blobB.radius) / distance));
   const angleATop =
     centerAngle + overlapAngleA + (tangentAngle - overlapAngleA) * thickness;
   const angleABottom =
@@ -158,22 +158,22 @@ function connectedPairPath(ballA: Ball, ballB: Ball, gooThickness: number): stri
     Math.PI +
     overlapAngleB +
     (Math.PI - overlapAngleB - tangentAngle) * thickness;
-  const aTop = pointOnCircle(centerA, ballA.radius, angleATop);
-  const aBottom = pointOnCircle(centerA, ballA.radius, angleABottom);
-  const bTop = pointOnCircle(centerB, ballB.radius, angleBTop);
-  const bBottom = pointOnCircle(centerB, ballB.radius, angleBBottom);
+  const aTop = pointOnCircle(centerA, blobA.radius, angleATop);
+  const aBottom = pointOnCircle(centerA, blobA.radius, angleABottom);
+  const bTop = pointOnCircle(centerB, blobB.radius, angleBTop);
+  const bBottom = pointOnCircle(centerB, blobB.radius, angleBBottom);
   const handleScale =
-    Math.min(thickness * 2.4, distanceBetween(aTop, bTop) / (ballA.radius + ballB.radius)) *
-    Math.min(1, (distance * 2) / (ballA.radius + ballB.radius));
-  const topControlA = add(aTop, vectorFromAngle(angleATop - Math.PI / 2, ballA.radius * handleScale));
-  const topControlB = add(bTop, vectorFromAngle(angleBTop + Math.PI / 2, ballB.radius * handleScale));
+    Math.min(thickness * 2.4, distanceBetween(aTop, bTop) / (blobA.radius + blobB.radius)) *
+    Math.min(1, (distance * 2) / (blobA.radius + blobB.radius));
+  const topControlA = add(aTop, vectorFromAngle(angleATop - Math.PI / 2, blobA.radius * handleScale));
+  const topControlB = add(bTop, vectorFromAngle(angleBTop + Math.PI / 2, blobB.radius * handleScale));
   const bottomControlB = add(
     bBottom,
-    vectorFromAngle(angleBBottom - Math.PI / 2, ballB.radius * handleScale),
+    vectorFromAngle(angleBBottom - Math.PI / 2, blobB.radius * handleScale),
   );
   const bottomControlA = add(
     aBottom,
-    vectorFromAngle(angleABottom + Math.PI / 2, ballA.radius * handleScale),
+    vectorFromAngle(angleABottom + Math.PI / 2, blobA.radius * handleScale),
   );
 
   return [

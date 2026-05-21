@@ -20,10 +20,10 @@ Build a browser-based blob editor with a fixed `512px` by `512px` drawing canvas
 
 Users must be able to:
 
-- Place balls on a `32 x 32` logical grid.
+- Place blobs on a `32 x 32` logical grid.
 - Use `16px` grid spacing across the 512px canvas.
-- Add, remove, select, drag, and resize balls.
-- Assign each ball to zero or more partner balls through connection records.
+- Add, remove, select, drag, and resize blobs.
+- Assign each blob to zero or more partner blobs through connection records.
 - Render connected goo bridges for every connection.
 - Control the thickness of each goo bridge independently.
 - Export the current blob drawing as SVG vector paths.
@@ -33,7 +33,7 @@ SVG export must preserve vectors. Do not export a raster image.
 ## Implementation Constraints
 
 - Use a client component for all p5 integration because p5 depends on browser APIs.
-- Keep Zustand/React as the source of truth for balls, connections, and editor state.
+- Keep Zustand/React as the source of truth for blobs, connections, and editor state.
 - Persist the validated `GooProject` source of truth through the Zustand store using browser localStorage.
 - Use p5 only for interactive canvas rendering.
 - Avoid p5 SVG export plugins. Generate SVG from the same vector path geometry used for rendering.
@@ -48,7 +48,7 @@ SVG export must preserve vectors. Do not export a raster image.
 Use this model unless there is a strong local reason to adapt it:
 
 ```ts
-type Ball = {
+type Blob = {
   id: string;
   gx: number;
   gy: number;
@@ -64,7 +64,7 @@ type Connection = {
 
 type GooProject = {
   version: 1;
-  balls: Ball[];
+  blobs: Blob[];
   connections: Connection[];
 };
 ```
@@ -77,10 +77,10 @@ Rules and defaults:
 - Radius range: `8px` to `160px`.
 - Default goo thickness per connection: `0.45`.
 - Goo thickness range: `0.1` to `1.0`.
-- A ball can participate in zero or more connections.
+- A blob can participate in zero or more connections.
 - Connection pairs are undirected; do not create duplicate A-B and B-A records.
-- Goo thickness is connection state, not ball state.
-- Removing a ball must remove every connection containing that ball.
+- Goo thickness is connection state, not blob state.
+- Removing a blob must remove every connection containing that blob.
 - JSON project import/export must use the `GooProject` shape.
 - Validate imported JSON with Zod, then normalize grid coordinates, radii, and goo thickness onto allowed ranges.
 - Reject malformed project JSON, duplicate IDs, missing connection endpoints, self-connections, and duplicate undirected links.
@@ -88,26 +88,26 @@ Rules and defaults:
 ## Rendering Algorithm
 
 - Generate explicit SVG path data for rendering and export.
-- Render every ball as a circle path.
-- Render every connection as a closed bezier bridge path between its two balls.
-- The bridge must connect connected balls at any distance without changing either ball radius.
+- Render every blob as a circle path.
+- Render every connection as a closed bezier bridge path between its two blobs.
+- The bridge must connect connected blobs at any distance without changing either blob radius.
 - Goo thickness controls the bridge attachment angles as a fraction of the valid tangent span.
 - Compute attachment points from the centers, radii, overlap angle, tangent angle, and per-connection goo thickness.
 - Cubic bezier handles must leave each circle tangent to the circle at the attachment point, so the bridge sticks at the correct angle.
 - Draw the generated paths filled on the p5 canvas through `Path2D`.
-- Draw the `16px` grid and editable ball handles around the blob fill so editing remains clear.
+- Draw the `16px` grid and editable blob handles around the blob fill so editing remains clear.
 - Reuse the exact generated path data for SVG export.
 
 ## Interaction Behavior
 
-- Click an empty grid cell to add a ball.
-- Click a ball handle to select that ball.
-- Drag the selected ball to move it, snapping to grid coordinates.
-- Provide a radius slider and/or numeric input for the selected ball.
-- Provide an add-connection selector for the selected ball.
-- List all selected-ball connections with partner label, remove button, and per-connection goo thickness controls.
-- Provide a remove button for the selected ball.
-- Support `Delete` and `Backspace` to remove the selected ball.
+- Click an empty grid cell to add a blob.
+- Click a blob handle to select that blob.
+- Drag the selected blob to move it, snapping to grid coordinates.
+- Provide a radius slider and/or numeric input for the selected blob.
+- Provide an add-connection selector for the selected blob.
+- List all selected-blob connections with partner label, remove button, and per-connection goo thickness controls.
+- Provide a remove button for the selected blob.
+- Support `Delete` and `Backspace` to remove the selected blob.
 - Provide an export button that downloads a `512 x 512` SVG with `<path>` elements for the blob geometry.
 - The Goo panel should show editable formatted project JSON, not raw SVG path data.
 - JSON import should apply only when the user explicitly presses `Apply JSON`; the canvas must keep working while the draft JSON is invalid.
@@ -142,16 +142,16 @@ Manually verify:
 - Editing valid project JSON and pressing `Apply JSON` updates the canvas and controls.
 - Invalid JSON, duplicate IDs, and invalid links show errors without changing the current canvas.
 - Downloaded project JSON can be pasted back into the Goo panel and applied.
-- Connected balls stay connected at long distances.
-- Changing goo thickness changes only bridge thickness, not ball radius.
+- Connected blobs stay connected at long distances.
+- Changing goo thickness changes only bridge thickness, not blob radius.
 - Bridge curves attach tangent to the circles at visually correct angles.
-- Unpartnered balls remain separate.
+- Unpartnered blobs remain separate.
 - Exported SVG opens independently and contains vector `<path>` data.
 - SVG output matches the p5 canvas paths.
 
 ## Assumptions
 
-- `32 x 32 grid` means 32 placement cells per axis, with ball centers at cell centers.
+- `32 x 32 grid` means 32 placement cells per axis, with blob centers at cell centers.
 - SVG export should preserve circles and goo bridges as vector paths.
 - A single-page editor is sufficient.
 - Persistence, routing, authentication, backend APIs, and image export are out of scope unless explicitly requested.

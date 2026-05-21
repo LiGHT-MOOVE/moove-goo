@@ -11,7 +11,7 @@ import {
   MAX_RADIUS,
   MIN_GOO_THICKNESS,
   MIN_RADIUS,
-  type Ball,
+  type Blob,
   type BlobPath,
   type Connection,
   blobPathsToSvg,
@@ -28,82 +28,82 @@ const HANDLE_RADIUS = 10;
 
 export default function GooBlobEditor() {
   const project = useGooStore((state) => state.project);
-  const selectedBallId = useGooStore((state) => state.selectedBallId);
+  const selectedBlobId = useGooStore((state) => state.selectedBlobId);
   const setProject = useGooStore((state) => state.setProject);
   const resetProject = useGooStore((state) => state.resetProject);
-  const addBall = useGooStore((state) => state.addBall);
-  const updateBall = useGooStore((state) => state.updateBall);
-  const removeBall = useGooStore((state) => state.removeBall);
+  const addBlob = useGooStore((state) => state.addBlob);
+  const updateBlob = useGooStore((state) => state.updateBlob);
+  const removeBlob = useGooStore((state) => state.removeBlob);
   const addConnection = useGooStore((state) => state.addConnection);
   const removeConnectionFromStore = useGooStore((state) => state.removeConnection);
   const updateConnection = useGooStore((state) => state.updateConnection);
-  const selectBall = useGooStore((state) => state.selectBall);
-  const balls = project.balls;
+  const selectBlob = useGooStore((state) => state.selectBlob);
+  const blobs = project.blobs;
   const connections = project.connections;
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
   const p5Ref = useRef<P5 | null>(null);
-  const ballsRef = useRef<Ball[]>(balls);
+  const blobsRef = useRef<Blob[]>(blobs);
   const connectionsRef = useRef<Connection[]>(connections);
-  const blobPathsRef = useRef<BlobPath[]>(generateBlobPaths(balls, connections));
-  const selectedBallIdRef = useRef<string | null>(selectedBallId);
-  const draggingBallIdRef = useRef<string | null>(null);
+  const blobPathsRef = useRef<BlobPath[]>(generateBlobPaths(blobs, connections));
+  const selectedBlobIdRef = useRef<string | null>(selectedBlobId);
+  const draggingBlobIdRef = useRef<string | null>(null);
   const [projectJson, setProjectJson] = useState(() => serializeGooProject(project));
   const [projectJsonDirty, setProjectJsonDirty] = useState(false);
   const [projectJsonError, setProjectJsonError] = useState<string | null>(null);
 
-  const selectedBall = balls.find((ball) => ball.id === selectedBallId) ?? null;
+  const selectedBlob = blobs.find((blob) => blob.id === selectedBlobId) ?? null;
   const selectedConnections = useMemo(
     () =>
-      selectedBallId
+      selectedBlobId
         ? connections.filter(
             (connection) =>
-              connection.aId === selectedBallId || connection.bId === selectedBallId,
+              connection.aId === selectedBlobId || connection.bId === selectedBlobId,
           )
         : [],
-    [connections, selectedBallId],
+    [connections, selectedBlobId],
   );
   const addableConnectionTargets = useMemo(() => {
-    if (!selectedBallId) {
+    if (!selectedBlobId) {
       return [];
     }
 
-    return balls.filter(
-      (ball) =>
-        ball.id !== selectedBallId &&
+    return blobs.filter(
+      (blob) =>
+        blob.id !== selectedBlobId &&
         !connections.some((connection) =>
-          connectionIncludesPair(connection, selectedBallId, ball.id),
+          connectionIncludesPair(connection, selectedBlobId, blob.id),
         ),
     );
-  }, [balls, connections, selectedBallId]);
+  }, [blobs, connections, selectedBlobId]);
   const blobPaths = useMemo(
-    () => generateBlobPaths(balls, connections),
-    [balls, connections],
+    () => generateBlobPaths(blobs, connections),
+    [blobs, connections],
   );
   const currentProjectJson = useMemo(() => serializeGooProject(project), [project]);
   const visibleProjectJson = projectJsonDirty ? projectJson : currentProjectJson;
 
   const setSelected = useCallback(
     (id: string | null) => {
-      selectedBallIdRef.current = id;
-      selectBall(id);
+      selectedBlobIdRef.current = id;
+      selectBlob(id);
       p5Ref.current?.redraw();
     },
-    [selectBall],
+    [selectBlob],
   );
 
-  const removeSelectedBall = useCallback(() => {
-    const selectedId = selectedBallIdRef.current;
+  const removeSelectedBlob = useCallback(() => {
+    const selectedId = selectedBlobIdRef.current;
 
     if (!selectedId) {
       return;
     }
 
-    removeBall(selectedId);
-    draggingBallIdRef.current = null;
-  }, [removeBall]);
+    removeBlob(selectedId);
+    draggingBlobIdRef.current = null;
+  }, [removeBlob]);
 
-  const addBallAtNextOpenCell = useCallback(() => {
-    const occupiedCells = new Set(ballsRef.current.map((ball) => `${ball.gx},${ball.gy}`));
+  const addBlobAtNextOpenCell = useCallback(() => {
+    const occupiedCells = new Set(blobsRef.current.map((blob) => `${blob.gx},${blob.gy}`));
     let target = { gx: 15, gy: 15 };
 
     for (let gy = 0; gy < 32; gy += 1) {
@@ -116,25 +116,25 @@ export default function GooBlobEditor() {
       }
     }
 
-    addBall(createBallId(), target.gx, target.gy);
-  }, [addBall]);
+    addBlob(createBlobId(), target.gx, target.gy);
+  }, [addBlob]);
 
   const updateSelectedRadius = useCallback(
     (radius: number) => {
-      const selectedId = selectedBallIdRef.current;
+      const selectedId = selectedBlobIdRef.current;
 
       if (!selectedId) {
         return;
       }
 
-      updateBall(selectedId, (ball) => ({ ...ball, radius: clampRadius(radius) }));
+      updateBlob(selectedId, (blob) => ({ ...blob, radius: clampRadius(radius) }));
     },
-    [updateBall],
+    [updateBlob],
   );
 
   const addConnectionFromSelected = useCallback(
     (targetId: string) => {
-      const selectedId = selectedBallIdRef.current;
+      const selectedId = selectedBlobIdRef.current;
 
       if (!selectedId || !targetId) {
         return;
@@ -169,7 +169,7 @@ export default function GooBlobEditor() {
 
   const resetSketch = useCallback(() => {
     resetProject();
-    draggingBallIdRef.current = null;
+    draggingBlobIdRef.current = null;
     setProjectJsonError(null);
     setProjectJsonDirty(false);
   }, [resetProject]);
@@ -186,7 +186,7 @@ export default function GooBlobEditor() {
     setProjectJson(serializeGooProject(result.project));
     setProjectJsonDirty(false);
     setProjectJsonError(null);
-    draggingBallIdRef.current = null;
+    draggingBlobIdRef.current = null;
   }, [setProject, visibleProjectJson]);
 
   const formatProjectJson = useCallback(() => {
@@ -241,24 +241,24 @@ export default function GooBlobEditor() {
   }, []);
 
   useEffect(() => {
-    ballsRef.current = balls;
+    blobsRef.current = blobs;
     connectionsRef.current = connections;
     blobPathsRef.current = blobPaths;
     p5Ref.current?.redraw();
-  }, [balls, blobPaths, connections]);
+  }, [blobs, blobPaths, connections]);
 
   useEffect(() => {
-    selectedBallIdRef.current = selectedBallId;
+    selectedBlobIdRef.current = selectedBlobId;
     p5Ref.current?.redraw();
-  }, [selectedBallId]);
+  }, [selectedBlobId]);
 
   useEffect(() => {
-    if (!selectedBallId || balls.some((ball) => ball.id === selectedBallId)) {
+    if (!selectedBlobId || blobs.some((blob) => blob.id === selectedBlobId)) {
       return;
     }
 
-    setSelected(balls[0]?.id ?? null);
-  }, [balls, selectedBallId, setSelected]);
+    setSelected(blobs[0]?.id ?? null);
+  }, [blobs, selectedBlobId, setSelected]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -275,13 +275,13 @@ export default function GooBlobEditor() {
       }
 
       event.preventDefault();
-      removeSelectedBall();
+      removeSelectedBlob();
     };
 
     window.addEventListener("keydown", handleKeyDown);
 
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [removeSelectedBall]);
+  }, [removeSelectedBlob]);
 
   useEffect(() => {
     let disposed = false;
@@ -306,7 +306,7 @@ export default function GooBlobEditor() {
         };
 
         p.draw = () => {
-          drawSketch(p, blobPathsRef.current, ballsRef.current, selectedBallIdRef.current);
+          drawSketch(p, blobPathsRef.current, blobsRef.current, selectedBlobIdRef.current);
         };
 
         p.mousePressed = () => {
@@ -314,27 +314,27 @@ export default function GooBlobEditor() {
             return;
           }
 
-          const hitBall = findHitBall(p.mouseX, p.mouseY, ballsRef.current);
+          const hitBlob = findHitBlob(p.mouseX, p.mouseY, blobsRef.current);
 
-          if (hitBall) {
-            draggingBallIdRef.current = hitBall.id;
-            setSelected(hitBall.id);
+          if (hitBlob) {
+            draggingBlobIdRef.current = hitBlob.id;
+            setSelected(hitBlob.id);
             return;
           }
 
           const gridPosition = pixelToGrid(p.mouseX, p.mouseY);
-          const gridBall = findBallAtGrid(gridPosition.gx, gridPosition.gy, ballsRef.current);
+          const gridBlob = findBlobAtGrid(gridPosition.gx, gridPosition.gy, blobsRef.current);
 
-          if (gridBall) {
-            setSelected(gridBall.id);
+          if (gridBlob) {
+            setSelected(gridBlob.id);
             return;
           }
 
-          addBall(createBallId(), gridPosition.gx, gridPosition.gy);
+          addBlob(createBlobId(), gridPosition.gx, gridPosition.gy);
         };
 
         p.mouseDragged = () => {
-          const draggingId = draggingBallIdRef.current;
+          const draggingId = draggingBlobIdRef.current;
 
           if (!draggingId || !isInsideCanvas(p.mouseX, p.mouseY)) {
             return;
@@ -342,11 +342,11 @@ export default function GooBlobEditor() {
 
           const gridPosition = pixelToGrid(p.mouseX, p.mouseY);
 
-          updateBall(draggingId, (ball) => ({ ...ball, ...gridPosition }));
+          updateBlob(draggingId, (blob) => ({ ...blob, ...gridPosition }));
         };
 
         p.mouseReleased = () => {
-          draggingBallIdRef.current = null;
+          draggingBlobIdRef.current = null;
         };
       };
 
@@ -361,7 +361,7 @@ export default function GooBlobEditor() {
       sketchInstance?.remove();
       p5Ref.current = null;
     };
-  }, [addBall, setSelected, updateBall]);
+  }, [addBlob, setSelected, updateBlob]);
 
   return (
     <main className="min-h-full bg-[#f5f4ef] text-slate-950">
@@ -394,7 +394,7 @@ export default function GooBlobEditor() {
               </h2>
 
               <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-                <Metric label="Balls" value={balls.length} />
+                <Metric label="Blobs" value={blobs.length} />
                 <Metric label="Links" value={connections.length} />
                 <Metric label="Paths" value={blobPaths.length} />
                 <Metric label="Selected" value={selectedConnections.length} />
@@ -447,34 +447,34 @@ export default function GooBlobEditor() {
             <section className="control-panel">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-sm font-semibold uppercase tracking-normal text-slate-700">
-                  Balls
+                  Blobs
                 </h2>
                 <button
                   className="editor-button editor-button-secondary h-9"
-                  onClick={addBallAtNextOpenCell}
+                  onClick={addBlobAtNextOpenCell}
                   type="button"
                 >
-                  Add Ball
+                  Add Blob
                 </button>
               </div>
 
               <div className="mt-4 grid gap-2">
-                {balls.map((ball, index) => {
-                  const isSelected = ball.id === selectedBallId;
-                  const ballConnections = connections.filter((connection) =>
-                    connectionIncludesBall(connection, ball.id),
+                {blobs.map((blob, index) => {
+                  const isSelected = blob.id === selectedBlobId;
+                  const blobConnections = connections.filter((connection) =>
+                    connectionIncludesBlob(connection, blob.id),
                   );
 
                   return (
                     <button
-                      className={`ball-row ${isSelected ? "ball-row-selected" : ""}`}
-                      key={ball.id}
-                      onClick={() => setSelected(ball.id)}
+                      className={`blob-row ${isSelected ? "blob-row-selected" : ""}`}
+                      key={blob.id}
+                      onClick={() => setSelected(blob.id)}
                       type="button"
                     >
-                      <span className="font-medium">Ball {index + 1}</span>
+                      <span className="font-medium">Blob {index + 1}</span>
                       <span className="text-slate-500">
-                        {ball.gx}, {ball.gy} / {ball.radius}px / {ballConnections.length} links
+                        {blob.gx}, {blob.gy} / {blob.radius}px / {blobConnections.length} links
                       </span>
                     </button>
                   );
@@ -484,15 +484,15 @@ export default function GooBlobEditor() {
 
             <section className="control-panel">
               <h2 className="text-sm font-semibold uppercase tracking-normal text-slate-700">
-                Selected Ball
+                Selected Blob
               </h2>
 
-              {selectedBall ? (
+              {selectedBlob ? (
                 <div className="mt-4 grid gap-4">
                   <div className="grid grid-cols-3 gap-2 text-sm">
-                    <Metric label="Grid X" value={selectedBall.gx} />
-                    <Metric label="Grid Y" value={selectedBall.gy} />
-                    <Metric label="Radius" value={`${selectedBall.radius}px`} />
+                    <Metric label="Grid X" value={selectedBlob.gx} />
+                    <Metric label="Grid Y" value={selectedBlob.gy} />
+                    <Metric label="Radius" value={`${selectedBlob.radius}px`} />
                   </div>
 
                   <label className="grid gap-2 text-sm font-medium text-slate-700">
@@ -503,7 +503,7 @@ export default function GooBlobEditor() {
                       min={MIN_RADIUS}
                       onChange={(event) => updateSelectedRadius(Number(event.target.value))}
                       type="range"
-                      value={selectedBall.radius}
+                      value={selectedBlob.radius}
                     />
                   </label>
 
@@ -515,7 +515,7 @@ export default function GooBlobEditor() {
                       min={MIN_RADIUS}
                       onChange={(event) => updateSelectedRadius(Number(event.target.value))}
                       type="number"
-                      value={selectedBall.radius}
+                      value={selectedBlob.radius}
                     />
                   </label>
 
@@ -530,10 +530,10 @@ export default function GooBlobEditor() {
                         }}
                         value=""
                       >
-                        <option value="">Choose ball</option>
-                        {addableConnectionTargets.map((ball) => (
-                          <option key={ball.id} value={ball.id}>
-                            {ballLabel(ball, balls)}
+                        <option value="">Choose blob</option>
+                        {addableConnectionTargets.map((blob) => (
+                          <option key={blob.id} value={blob.id}>
+                            {blobLabel(blob, blobs)}
                           </option>
                         ))}
                       </select>
@@ -543,15 +543,15 @@ export default function GooBlobEditor() {
                   <div className="grid gap-3">
                     {selectedConnections.length > 0 ? (
                       selectedConnections.map((connection) => {
-                        const otherBall = balls.find(
-                          (ball) => ball.id === otherConnectionBallId(connection, selectedBall.id),
+                        const otherBlob = blobs.find(
+                          (blob) => blob.id === otherConnectionBlobId(connection, selectedBlob.id),
                         );
 
                         return (
                           <div className="connection-row" key={connection.id}>
                             <div className="flex items-center justify-between gap-2">
                               <span className="text-sm font-semibold text-slate-800">
-                                {otherBall ? ballLabel(otherBall, balls) : "Missing ball"}
+                                {otherBlob ? blobLabel(otherBlob, blobs) : "Missing blob"}
                               </span>
                               <button
                                 className="editor-button editor-button-danger h-8 min-h-8 px-2 text-xs"
@@ -605,14 +605,14 @@ export default function GooBlobEditor() {
 
                   <button
                     className="editor-button editor-button-danger"
-                    onClick={removeSelectedBall}
+                    onClick={removeSelectedBlob}
                     type="button"
                   >
                     Remove Selected
                   </button>
                 </div>
               ) : (
-                <p className="mt-3 text-sm text-slate-600">No ball selected.</p>
+                <p className="mt-3 text-sm text-slate-600">No blob selected.</p>
               )}
             </section>
 
@@ -632,7 +632,7 @@ function Metric({ label, value }: { label: string; value: number | string }) {
   );
 }
 
-function drawSketch(p: P5, blobPaths: BlobPath[], balls: Ball[], selectedBallId: string | null) {
+function drawSketch(p: P5, blobPaths: BlobPath[], blobs: Blob[], selectedBlobId: string | null) {
   p.background("#ffffff");
   const context = p.drawingContext as CanvasRenderingContext2D;
 
@@ -646,7 +646,7 @@ function drawSketch(p: P5, blobPaths: BlobPath[], balls: Ball[], selectedBallId:
   context.restore();
 
   drawGrid(p);
-  drawBallHandles(p, balls, selectedBallId);
+  drawBlobHandles(p, blobs, selectedBlobId);
 }
 
 function drawGrid(p: P5) {
@@ -665,15 +665,15 @@ function drawGrid(p: P5) {
   p.rect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 }
 
-function drawBallHandles(p: P5, balls: Ball[], selectedBallId: string | null) {
-  for (const ball of balls) {
-    const center = gridToPixel(ball.gx, ball.gy);
-    const isSelected = ball.id === selectedBallId;
+function drawBlobHandles(p: P5, blobs: Blob[], selectedBlobId: string | null) {
+  for (const blob of blobs) {
+    const center = gridToPixel(blob.gx, blob.gy);
+    const isSelected = blob.id === selectedBlobId;
 
     p.noFill();
     p.stroke(isSelected ? "#0f766e" : "#94a3b8");
     p.strokeWeight(isSelected ? 2 : 1);
-    p.circle(center.x, center.y, ball.radius * 2);
+    p.circle(center.x, center.y, blob.radius * 2);
 
     p.stroke("#ffffff");
     p.strokeWeight(4);
@@ -686,31 +686,31 @@ function drawBallHandles(p: P5, balls: Ball[], selectedBallId: string | null) {
   }
 }
 
-function findHitBall(x: number, y: number, balls: Ball[]): Ball | null {
-  for (let index = balls.length - 1; index >= 0; index -= 1) {
-    const ball = balls[index];
-    const center = gridToPixel(ball.gx, ball.gy);
+function findHitBlob(x: number, y: number, blobs: Blob[]): Blob | null {
+  for (let index = blobs.length - 1; index >= 0; index -= 1) {
+    const blob = blobs[index];
+    const center = gridToPixel(blob.gx, blob.gy);
     const dx = x - center.x;
     const dy = y - center.y;
 
     if (Math.sqrt(dx * dx + dy * dy) <= HANDLE_RADIUS + 2) {
-      return ball;
+      return blob;
     }
   }
 
   return null;
 }
 
-function findBallAtGrid(gx: number, gy: number, balls: Ball[]): Ball | null {
-  return balls.find((ball) => ball.gx === gx && ball.gy === gy) ?? null;
+function findBlobAtGrid(gx: number, gy: number, blobs: Blob[]): Blob | null {
+  return blobs.find((blob) => blob.gx === gx && blob.gy === gy) ?? null;
 }
 
 function isInsideCanvas(x: number, y: number): boolean {
   return x >= 0 && x <= CANVAS_SIZE && y >= 0 && y <= CANVAS_SIZE;
 }
 
-function connectionIncludesBall(connection: Connection, ballId: string): boolean {
-  return connection.aId === ballId || connection.bId === ballId;
+function connectionIncludesBlob(connection: Connection, blobId: string): boolean {
+  return connection.aId === blobId || connection.bId === blobId;
 }
 
 function connectionIncludesPair(connection: Connection, aId: string, bId: string): boolean {
@@ -720,12 +720,12 @@ function connectionIncludesPair(connection: Connection, aId: string, bId: string
   );
 }
 
-function otherConnectionBallId(connection: Connection, ballId: string): string {
-  return connection.aId === ballId ? connection.bId : connection.aId;
+function otherConnectionBlobId(connection: Connection, blobId: string): string {
+  return connection.aId === blobId ? connection.bId : connection.aId;
 }
 
-function ballLabel(ball: Ball, balls: Ball[]): string {
-  return `Ball ${balls.findIndex((candidate) => candidate.id === ball.id) + 1}`;
+function blobLabel(blob: Blob, blobs: Blob[]): string {
+  return `Blob ${blobs.findIndex((candidate) => candidate.id === blob.id) + 1}`;
 }
 
 function downloadTextFile(filename: string, type: string, content: string) {
@@ -741,12 +741,12 @@ function downloadTextFile(filename: string, type: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
-function createBallId(): string {
+function createBlobId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
   }
 
-  return `ball-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `blob-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 function createConnectionId(): string {
