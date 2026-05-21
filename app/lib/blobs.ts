@@ -27,7 +27,7 @@ export type BlobPath = {
 export const CANVAS_SIZE = 512;
 export const GRID_SIZE = 32;
 export const GRID_STEP = 16;
-export const CELL_OFFSET = GRID_STEP / 2;
+export const GRID_ORIGIN = 0;
 export const DEFAULT_RADIUS = 48;
 export const MIN_RADIUS = 8;
 export const MAX_RADIUS = 160;
@@ -55,15 +55,15 @@ export function clampGooThickness(value: number): number {
 
 export function gridToPixel(gx: number, gy: number): Point {
   return {
-    x: gx * GRID_STEP + CELL_OFFSET,
-    y: gy * GRID_STEP + CELL_OFFSET,
+    x: gx * GRID_STEP + GRID_ORIGIN,
+    y: gy * GRID_STEP + GRID_ORIGIN,
   };
 }
 
 export function pixelToGrid(x: number, y: number): Pick<Blob, "gx" | "gy"> {
   return {
-    gx: clampGridCoordinate((x - CELL_OFFSET) / GRID_STEP),
-    gy: clampGridCoordinate((y - CELL_OFFSET) / GRID_STEP),
+    gx: clampGridCoordinate((x - GRID_ORIGIN) / GRID_STEP),
+    gy: clampGridCoordinate((y - GRID_ORIGIN) / GRID_STEP),
   };
 }
 

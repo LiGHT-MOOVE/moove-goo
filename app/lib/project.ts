@@ -57,11 +57,11 @@ const rawProjectSchema = z.preprocess(
 );
 
 const DEFAULT_BLOBS: Blob[] = [
-  { id: "blob-left", gx: 3, gy: 18, radius: 48 },
-  { id: "blob-upper-left", gx: 9, gy: 11, radius: 48 },
-  { id: "blob-center", gx: 15, gy: 18, radius: 48 },
-  { id: "blob-upper-right", gx: 21, gy: 11, radius: 48 },
-  { id: "blob-right", gx: 27, gy: 18, radius: 48 },
+  { id: "blob-left", gx: 4, gy: 19, radius: 48 },
+  { id: "blob-upper-left", gx: 10, gy: 12, radius: 48 },
+  { id: "blob-center", gx: 16, gy: 19, radius: 48 },
+  { id: "blob-upper-right", gx: 22, gy: 12, radius: 48 },
+  { id: "blob-right", gx: 28, gy: 19, radius: 48 },
 ];
 
 const DEFAULT_CONNECTIONS: Connection[] = [

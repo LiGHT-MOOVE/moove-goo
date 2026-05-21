@@ -20,7 +20,7 @@ Build a browser-based blob editor with a fixed `512px` by `512px` drawing canvas
 
 Users must be able to:
 
-- Place blobs on a `32 x 32` logical grid.
+- Place blobs on a `32 x 32` logical marker grid.
 - Use `16px` grid spacing across the 512px canvas.
 - Add, remove, select, drag, and resize blobs.
 - Assign each blob to zero or more partner blobs through connection records.
@@ -73,7 +73,7 @@ type GooProject = {
 Rules and defaults:
 
 - `gx` and `gy` are integer grid coordinates from `0` through `31`.
-- Pixel center maps as `x = gx * 16 + 8`, `y = gy * 16 + 8`.
+- Pixel center maps as `x = gx * 16`, `y = gy * 16`.
 - Default radius: `48px`.
 - Radius range: `8px` to `160px`.
 - Default goo thickness per connection: `0.45`.
@@ -101,7 +101,7 @@ Rules and defaults:
 
 ## Interaction Behavior
 
-- Click an empty grid cell to add a blob.
+- Click an empty grid marker to add a blob.
 - Click a blob handle to select that blob.
 - Drag the selected blob to move it, snapping to grid coordinates.
 - Provide a radius slider and/or numeric input for the selected blob.
@@ -152,7 +152,7 @@ Manually verify:
 
 ## Assumptions
 
-- `32 x 32 grid` means 32 placement cells per axis, with blob centers at cell centers.
+- `32 x 32 grid` means 32 placement markers per axis, with blob centers directly on grid intersections.
 - SVG export should preserve circles and goo bridges as vector paths.
 - A single-page editor is sufficient.
 - Persistence, routing, authentication, backend APIs, and image export are out of scope unless explicitly requested.
