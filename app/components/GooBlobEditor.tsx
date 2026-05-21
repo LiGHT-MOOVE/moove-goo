@@ -663,19 +663,23 @@ function drawSketch(p: P5, blobPaths: BlobPath[], blobs: Blob[], selectedBlobId:
 }
 
 function drawGrid(p: P5) {
+  const gridOffset = -1;
+
   p.strokeWeight(1);
 
   for (let value = 0; value <= CANVAS_SIZE; value += 16) {
+    const shiftedValue = value + gridOffset;
     const isMajorLine = value % 64 === 0;
+
     p.stroke(isMajorLine ? "#cbd5e1" : "#e5e7eb");
-    p.line(value, 0, value, CANVAS_SIZE);
-    p.line(0, value, CANVAS_SIZE, value);
+    p.line(shiftedValue, gridOffset, shiftedValue, CANVAS_SIZE + gridOffset);
+    p.line(gridOffset, shiftedValue, CANVAS_SIZE + gridOffset, shiftedValue);
   }
 
   p.noFill();
   p.stroke("#cbd5e1");
   p.strokeWeight(1);
-  p.rect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+  p.rect(gridOffset, gridOffset, CANVAS_SIZE, CANVAS_SIZE);
 }
 
 function drawBlobHandles(p: P5, blobs: Blob[], selectedBlobId: string | null) {
