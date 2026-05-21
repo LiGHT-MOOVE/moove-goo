@@ -1,6 +1,5 @@
 import { z } from "zod";
 import {
-  DEFAULT_GOO_THICKNESS,
   DEFAULT_RADIUS,
   type Ball,
   type Connection,
@@ -40,17 +39,37 @@ const rawProjectSchema = z.object({
 });
 
 const DEFAULT_BALLS: Ball[] = [
-  { id: "ball-1", gx: 11, gy: 16, radius: 72 },
-  { id: "ball-2", gx: 17, gy: 16, radius: 72 },
-  { id: "ball-3", gx: 14, gy: 10, radius: 52 },
+  { id: "ball-top-left", gx: 9, gy: 5, radius: 56 },
+  { id: "ball-top-right", gx: 22, gy: 5, radius: 56 },
+  { id: "ball-mid-left", gx: 9, gy: 16, radius: 56 },
+  { id: "ball-mid-right", gx: 21, gy: 16, radius: 56 },
+  { id: "ball-bottom-left", gx: 9, gy: 26, radius: 56 },
 ];
 
 const DEFAULT_CONNECTIONS: Connection[] = [
   {
-    id: "connection-1",
-    aId: "ball-1",
-    bId: "ball-2",
-    gooThickness: DEFAULT_GOO_THICKNESS,
+    id: "connection-top-left-top-right",
+    aId: "ball-top-left",
+    bId: "ball-top-right",
+    gooThickness: 0.55,
+  },
+  {
+    id: "connection-mid-left-top-left",
+    aId: "ball-mid-left",
+    bId: "ball-top-left",
+    gooThickness: 0.5,
+  },
+  {
+    id: "connection-mid-right-mid-left",
+    aId: "ball-mid-right",
+    bId: "ball-mid-left",
+    gooThickness: 0.5,
+  },
+  {
+    id: "connection-bottom-left-mid-left",
+    aId: "ball-bottom-left",
+    bId: "ball-mid-left",
+    gooThickness: 0.45,
   },
 ];
 
