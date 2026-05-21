@@ -299,7 +299,7 @@ export default function GooBlobEditor() {
       const sketch = (p: P5) => {
         p.setup = () => {
           const canvas = p.createCanvas(CANVAS_SIZE, CANVAS_SIZE);
-          canvas.elt.style.display = "block";
+          canvas.class("block h-[512px] w-[512px]");
           canvas.elt.setAttribute("aria-label", "Goo blob editor canvas");
           p.pixelDensity(1);
           p.noLoop();
@@ -373,10 +373,18 @@ export default function GooBlobEditor() {
             </h2>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button className="editor-button editor-button-secondary" onClick={resetSketch} type="button">
+            <button
+              className="inline-flex min-h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-3.5 text-sm font-semibold text-slate-950 transition-colors duration-150 hover:border-slate-400 hover:bg-slate-50"
+              onClick={resetSketch}
+              type="button"
+            >
               Reset
             </button>
-            <button className="editor-button editor-button-primary" onClick={exportSvg} type="button">
+            <button
+              className="inline-flex min-h-10 items-center justify-center rounded-md border border-transparent bg-gray-900 px-3.5 text-sm font-semibold text-white transition-colors duration-150 hover:bg-slate-700"
+              onClick={exportSvg}
+              type="button"
+            >
               Export SVG
             </button>
           </div>
@@ -384,11 +392,11 @@ export default function GooBlobEditor() {
 
         <section className="grid flex-1 gap-5 lg:grid-cols-[512px_minmax(0,1fr)]">
           <div className="flex max-w-full flex-col gap-4 overflow-x-auto lg:overflow-visible">
-            <div className="canvas-shell">
+            <div className="h-[512px] w-[512px] overflow-hidden rounded-lg border border-slate-700 bg-white shadow-[0_18px_45px_rgb(15_23_42_/_0.14)]">
               <div ref={canvasHostRef} className="h-[512px] w-[512px]" />
             </div>
 
-            <section className="control-panel w-[512px] max-w-full">
+            <section className="w-[512px] max-w-full rounded-lg border border-slate-300 bg-white/80 p-4">
               <h2 className="text-sm font-semibold uppercase tracking-normal text-slate-700">
                 Project
               </h2>
@@ -403,7 +411,7 @@ export default function GooBlobEditor() {
               <label className="mt-4 grid gap-2 text-sm font-medium text-slate-700">
                 Project JSON
                 <textarea
-                  className="project-json-editor"
+                  className="min-h-[260px] resize-y rounded-md border border-slate-300 bg-slate-900 p-3 font-mono text-xs leading-[1.55] text-slate-50 outline-none [tab-size:2] focus:border-teal-700 focus:shadow-[0_0_0_3px_rgb(20_184_166_/_0.16)]"
                   onChange={(event) => updateProjectJsonDraft(event.target.value)}
                   onKeyDown={handleProjectJsonKeyDown}
                   spellCheck={false}
@@ -419,21 +427,21 @@ export default function GooBlobEditor() {
 
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
-                  className="editor-button editor-button-primary h-9"
+                  className="inline-flex h-9 min-h-9 items-center justify-center rounded-md border border-transparent bg-gray-900 px-3.5 text-sm font-semibold text-white transition-colors duration-150 hover:bg-slate-700"
                   onClick={applyProjectJson}
                   type="button"
                 >
                   Apply JSON
                 </button>
                 <button
-                  className="editor-button editor-button-secondary h-9"
+                  className="inline-flex h-9 min-h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3.5 text-sm font-semibold text-slate-950 transition-colors duration-150 hover:border-slate-400 hover:bg-slate-50"
                   onClick={formatProjectJson}
                   type="button"
                 >
                   Format
                 </button>
                 <button
-                  className="editor-button editor-button-secondary h-9"
+                  className="inline-flex h-9 min-h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3.5 text-sm font-semibold text-slate-950 transition-colors duration-150 hover:border-slate-400 hover:bg-slate-50"
                   onClick={downloadProjectJson}
                   type="button"
                 >
@@ -444,13 +452,13 @@ export default function GooBlobEditor() {
           </div>
 
           <aside className="flex flex-col gap-4">
-            <section className="control-panel">
+            <section className="rounded-lg border border-slate-300 bg-white/80 p-4">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-sm font-semibold uppercase tracking-normal text-slate-700">
                   Blobs
                 </h2>
                 <button
-                  className="editor-button editor-button-secondary h-9"
+                  className="inline-flex h-9 min-h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3.5 text-sm font-semibold text-slate-950 transition-colors duration-150 hover:border-slate-400 hover:bg-slate-50"
                   onClick={addBlobAtNextOpenCell}
                   type="button"
                 >
@@ -467,7 +475,9 @@ export default function GooBlobEditor() {
 
                   return (
                     <button
-                      className={`blob-row ${isSelected ? "blob-row-selected" : ""}`}
+                      className={`flex min-h-[42px] items-center justify-between gap-3 rounded-md border border-slate-200 bg-white px-3 text-left hover:border-slate-400 ${
+                        isSelected ? "border-teal-700 bg-teal-50 hover:border-teal-700" : ""
+                      }`}
                       key={blob.id}
                       onClick={() => setSelected(blob.id)}
                       type="button"
@@ -482,7 +492,7 @@ export default function GooBlobEditor() {
               </div>
             </section>
 
-            <section className="control-panel">
+            <section className="rounded-lg border border-slate-300 bg-white/80 p-4">
               <h2 className="text-sm font-semibold uppercase tracking-normal text-slate-700">
                 Selected Blob
               </h2>
@@ -548,13 +558,16 @@ export default function GooBlobEditor() {
                         );
 
                         return (
-                          <div className="connection-row" key={connection.id}>
+                          <div
+                            className="rounded-md border border-slate-200 bg-white p-3"
+                            key={connection.id}
+                          >
                             <div className="flex items-center justify-between gap-2">
                               <span className="text-sm font-semibold text-slate-800">
                                 {otherBlob ? blobLabel(otherBlob, blobs) : "Missing blob"}
                               </span>
                               <button
-                                className="editor-button editor-button-danger h-8 min-h-8 px-2 text-xs"
+                                className="inline-flex h-8 min-h-8 items-center justify-center rounded-md border border-rose-200 bg-rose-50 px-2 text-xs font-semibold text-rose-700 transition-colors duration-150 hover:border-rose-400 hover:bg-rose-100"
                                 onClick={() => removeConnection(connection.id)}
                                 type="button"
                               >
@@ -604,7 +617,7 @@ export default function GooBlobEditor() {
                   </div>
 
                   <button
-                    className="editor-button editor-button-danger"
+                    className="inline-flex min-h-10 items-center justify-center rounded-md border border-rose-200 bg-rose-50 px-3.5 text-sm font-semibold text-rose-700 transition-colors duration-150 hover:border-rose-400 hover:bg-rose-100"
                     onClick={removeSelectedBlob}
                     type="button"
                   >

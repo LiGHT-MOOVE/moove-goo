@@ -40,6 +40,7 @@ SVG export must preserve vectors. Do not export a raster image.
 - Install `p5`; add p5 typings only if TypeScript requires them after install.
 - Keep geometry helpers independent from React and p5 so they can be tested separately.
 - Keep the UI dense, practical, and tool-like.
+- Use Tailwind utility classes directly in JSX for app styling; do not add custom CSS selectors or class-name constants for reusable styles.
 - Do not reintroduce classic scalar-field metaballs, inverse-square fields, marching squares, contour sampling, or threshold controls.
 - Treat SVG path data as derived output only. Do not use render paths as project state.
 
@@ -121,7 +122,7 @@ Rules and defaults:
 - Keep project schema, serialization, and Zod validation helpers in `app/lib/project.ts`.
 - Keep the persisted Zustand store in `app/store/gooStore.ts` with storage key `goo-project-v1`.
 - Update `app/layout.tsx` metadata to describe the goo blob editor.
-- Adjust `app/globals.css` only for app-level layout and Tailwind-compatible base styling.
+- Keep `app/globals.css` limited to the Tailwind import unless a future request explicitly needs global CSS.
 
 ## Verification
 
