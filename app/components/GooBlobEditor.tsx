@@ -392,7 +392,7 @@ export default function GooBlobEditor() {
 
         <section className="grid flex-1 gap-5 lg:grid-cols-[512px_minmax(0,1fr)]">
           <div className="flex max-w-full flex-col gap-4 overflow-x-auto lg:overflow-visible">
-            <div className="h-[512px] w-[512px] overflow-hidden rounded-lg border border-slate-700 bg-white shadow-[0_18px_45px_rgb(15_23_42_/_0.14)]">
+            <div className="h-[512px] w-[512px] overflow-hidden rounded-lg border border-slate-300 bg-white shadow-[0_18px_45px_rgb(15_23_42_/_0.14)]">
               <div ref={canvasHostRef} className="h-[512px] w-[512px]" />
             </div>
 
@@ -673,8 +673,8 @@ function drawGrid(p: P5) {
   }
 
   p.noFill();
-  p.stroke("#334155");
-  p.strokeWeight(2);
+  p.stroke("#cbd5e1");
+  p.strokeWeight(1);
   p.rect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 }
 
