@@ -121,7 +121,7 @@ function connectedPairPath(ballA: Ball, ballB: Ball, gooThickness: number): stri
     return "";
   }
 
-  // Metaball-style bridge: thickness selects attachment angles, and bezier handles
+  // Goo bridge: thickness selects attachment angles, and bezier handles
   // follow circle tangents at those exact attachment points.
   const thickness = clampGooThickness(gooThickness);
   const centerAngle = Math.atan2(dy, dx);
