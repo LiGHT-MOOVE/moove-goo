@@ -57,37 +57,37 @@ const rawProjectSchema = z.preprocess(
 );
 
 const DEFAULT_BLOBS: Blob[] = [
-  { id: "blob-top-left", gx: 9, gy: 5, radius: 56 },
-  { id: "blob-top-right", gx: 22, gy: 5, radius: 56 },
-  { id: "blob-mid-left", gx: 9, gy: 16, radius: 56 },
-  { id: "blob-mid-right", gx: 21, gy: 16, radius: 56 },
-  { id: "blob-bottom-left", gx: 9, gy: 26, radius: 56 },
+  { id: "blob-left", gx: 3, gy: 18, radius: 48 },
+  { id: "blob-upper-left", gx: 9, gy: 11, radius: 48 },
+  { id: "blob-center", gx: 15, gy: 18, radius: 48 },
+  { id: "blob-upper-right", gx: 21, gy: 11, radius: 48 },
+  { id: "blob-right", gx: 27, gy: 18, radius: 48 },
 ];
 
 const DEFAULT_CONNECTIONS: Connection[] = [
   {
-    id: "connection-top-left-top-right",
-    aId: "blob-top-left",
-    bId: "blob-top-right",
-    gooThickness: 0.55,
-  },
-  {
-    id: "connection-mid-left-top-left",
-    aId: "blob-mid-left",
-    bId: "blob-top-left",
+    id: "connection-left-to-upper-left",
+    aId: "blob-left",
+    bId: "blob-upper-left",
     gooThickness: 0.5,
   },
   {
-    id: "connection-mid-right-mid-left",
-    aId: "blob-mid-right",
-    bId: "blob-mid-left",
+    id: "connection-upper-left-to-center",
+    aId: "blob-upper-left",
+    bId: "blob-center",
     gooThickness: 0.5,
   },
   {
-    id: "connection-bottom-left-mid-left",
-    aId: "blob-bottom-left",
-    bId: "blob-mid-left",
-    gooThickness: 0.45,
+    id: "connection-center-to-upper-right",
+    aId: "blob-center",
+    bId: "blob-upper-right",
+    gooThickness: 0.5,
+  },
+  {
+    id: "connection-upper-right-to-right",
+    aId: "blob-upper-right",
+    bId: "blob-right",
+    gooThickness: 0.5,
   },
 ];
 
