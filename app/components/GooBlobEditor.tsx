@@ -7,6 +7,7 @@ import {
   CANVAS_SIZE,
   DEFAULT_GOO_THICKNESS,
   GOO_THICKNESS_STEP,
+  GRID_SIZE,
   MAX_GOO_THICKNESS,
   MAX_RADIUS,
   MIN_GOO_THICKNESS,
@@ -15,11 +16,12 @@ import {
   type BlobPath,
   type Connection,
   blobPathsToSvg,
+  canvasPointToGrid,
   clampGooThickness,
   clampRadius,
   generateBlobPaths,
-  gridToPixel,
-  pixelToGrid,
+  gridCoordinateToCanvasPosition,
+  gridToCanvasPoint,
 } from "@/app/lib/blobs";
 import { parseGooProject, serializeGooProject } from "@/app/lib/project";
 import { useGooStore } from "@/app/store/gooStore";
@@ -106,11 +108,11 @@ export default function GooBlobEditor() {
     const occupiedCells = new Set(blobsRef.current.map((blob) => `${blob.gx},${blob.gy}`));
     let target = { gx: 15, gy: 15 };
 
-    for (let gy = 0; gy < 32; gy += 1) {
-      for (let gx = 0; gx < 32; gx += 1) {
+    for (let gy = 0; gy < GRID_SIZE; gy += 1) {
+      for (let gx = 0; gx < GRID_SIZE; gx += 1) {
         if (!occupiedCells.has(`${gx},${gy}`)) {
           target = { gx, gy };
-          gy = 32;
+          gy = GRID_SIZE;
           break;
         }
       }
@@ -296,10 +298,21 @@ export default function GooBlobEditor() {
         return;
       }
 
+      const resizeCanvasToHost = (p: P5) => {
+        const size = getCanvasHostSize(host);
+
+        if (p.width !== size || p.height !== size) {
+          p.resizeCanvas(size, size);
+        }
+
+        p.redraw();
+      };
+
       const sketch = (p: P5) => {
         p.setup = () => {
-          const canvas = p.createCanvas(CANVAS_SIZE, CANVAS_SIZE);
-          canvas.class("block h-[512px] w-[512px]");
+          const size = getCanvasHostSize(host);
+          const canvas = p.createCanvas(size, size);
+          canvas.class("block h-full w-full");
           canvas.elt.setAttribute("aria-label", "Goo blob editor canvas");
           p.pixelDensity(1);
           p.noLoop();
@@ -309,12 +322,18 @@ export default function GooBlobEditor() {
           drawSketch(p, blobPathsRef.current, blobsRef.current, selectedBlobIdRef.current);
         };
 
+        p.windowResized = () => {
+          resizeCanvasToHost(p);
+        };
+
         p.mousePressed = () => {
-          if (!isInsideCanvas(p.mouseX, p.mouseY)) {
+          const pointer = renderedPointToCanvasPoint(p.mouseX, p.mouseY, p.width, p.height);
+
+          if (!pointer || !isInsideCanvas(pointer.x, pointer.y)) {
             return;
           }
 
-          const hitBlob = findHitBlob(p.mouseX, p.mouseY, blobsRef.current);
+          const hitBlob = findHitBlob(pointer.x, pointer.y, blobsRef.current, canvasScale(p));
 
           if (hitBlob) {
             draggingBlobIdRef.current = hitBlob.id;
@@ -322,7 +341,7 @@ export default function GooBlobEditor() {
             return;
           }
 
-          const gridPosition = pixelToGrid(p.mouseX, p.mouseY);
+          const gridPosition = canvasPointToGrid(pointer.x, pointer.y);
           const gridBlob = findBlobAtGrid(gridPosition.gx, gridPosition.gy, blobsRef.current);
 
           if (gridBlob) {
@@ -335,12 +354,13 @@ export default function GooBlobEditor() {
 
         p.mouseDragged = () => {
           const draggingId = draggingBlobIdRef.current;
+          const pointer = renderedPointToCanvasPoint(p.mouseX, p.mouseY, p.width, p.height);
 
-          if (!draggingId || !isInsideCanvas(p.mouseX, p.mouseY)) {
+          if (!draggingId || !pointer || !isInsideCanvas(pointer.x, pointer.y)) {
             return;
           }
 
-          const gridPosition = pixelToGrid(p.mouseX, p.mouseY);
+          const gridPosition = canvasPointToGrid(pointer.x, pointer.y);
 
           updateBlob(draggingId, (blob) => ({ ...blob, ...gridPosition }));
         };
@@ -352,6 +372,7 @@ export default function GooBlobEditor() {
 
       sketchInstance = new P5Constructor(sketch, host);
       p5Ref.current = sketchInstance;
+      resizeCanvasToHost(sketchInstance);
     }
 
     createSketch();
@@ -364,8 +385,8 @@ export default function GooBlobEditor() {
   }, [addBlob, setSelected, updateBlob]);
 
   return (
-    <main className="min-h-full bg-[#f5f4ef] text-slate-950">
-      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-5 px-5 py-6 lg:px-8">
+    <main className="min-h-full overflow-x-auto bg-[#f5f4ef] text-slate-950">
+      <div className="mx-auto flex min-h-screen w-full min-w-80 max-w-6xl flex-col gap-5 px-5 py-6 lg:px-8">
         <header className="flex flex-col gap-3 border-b border-slate-300 pb-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="text-2xl font-semibold tracking-normal text-slate-950">
@@ -390,13 +411,13 @@ export default function GooBlobEditor() {
           </div>
         </header>
 
-        <section className="grid flex-1 gap-5 lg:grid-cols-[512px_minmax(0,1fr)]">
-          <div className="flex max-w-full flex-col gap-4 overflow-x-auto lg:overflow-visible">
-            <div className="h-[512px] w-[512px] overflow-hidden rounded-lg border border-slate-300 bg-white shadow-[0_18px_45px_rgb(15_23_42_/_0.14)]">
-              <div ref={canvasHostRef} className="h-[512px] w-[512px]" />
+        <section className="grid flex-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <div className="flex min-w-0 flex-col gap-4">
+            <div className="aspect-square w-full overflow-hidden rounded-lg border border-slate-300 bg-white shadow-[0_18px_45px_rgb(15_23_42_/_0.14)]">
+              <div ref={canvasHostRef} className="h-full w-full" />
             </div>
 
-            <section className="w-[512px] max-w-full rounded-lg border border-slate-300 bg-white/80 p-4">
+            <section className="w-full rounded-lg border border-slate-300 bg-white/80 p-4">
               <h2 className="text-sm font-semibold uppercase tracking-normal text-slate-700">
                 Project
               </h2>
@@ -451,7 +472,7 @@ export default function GooBlobEditor() {
             </section>
           </div>
 
-          <aside className="flex flex-col gap-4">
+          <aside className="flex min-w-0 flex-col gap-4">
             <section className="rounded-lg border border-slate-300 bg-white/80 p-4">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-sm font-semibold uppercase tracking-normal text-slate-700">
@@ -647,9 +668,11 @@ function Metric({ label, value }: { label: string; value: number | string }) {
 
 function drawSketch(p: P5, blobPaths: BlobPath[], blobs: Blob[], selectedBlobId: string | null) {
   p.background("#ffffff");
+  const scale = canvasScale(p);
   const context = p.drawingContext as CanvasRenderingContext2D;
 
   context.save();
+  context.scale(scale, scale);
   context.fillStyle = "#111827";
   for (const blobPath of blobPaths) {
     if (blobPath.d) {
@@ -658,18 +681,22 @@ function drawSketch(p: P5, blobPaths: BlobPath[], blobs: Blob[], selectedBlobId:
   }
   context.restore();
 
-  drawGrid(p);
-  drawBlobHandles(p, blobs, selectedBlobId);
+  p.push();
+  p.scale(scale);
+  drawGrid(p, scale);
+  drawBlobHandles(p, blobs, selectedBlobId, scale);
+  p.pop();
 }
 
-function drawGrid(p: P5) {
-  const gridOffset = -1;
+function drawGrid(p: P5, scale: number) {
+  const gridOffset = -0.5 / scale;
 
-  p.strokeWeight(1);
+  p.strokeWeight(1 / scale);
 
-  for (let value = 0; value <= CANVAS_SIZE; value += 16) {
+  for (let index = 0; index <= GRID_SIZE; index += 1) {
+    const value = gridCoordinateToCanvasPosition(index);
     const shiftedValue = value + gridOffset;
-    const isMajorLine = value % 64 === 0;
+    const isMajorLine = index % 4 === 0;
 
     p.stroke(isMajorLine ? "#cbd5e1" : "#e5e7eb");
     p.line(shiftedValue, gridOffset, shiftedValue, CANVAS_SIZE + gridOffset);
@@ -678,39 +705,48 @@ function drawGrid(p: P5) {
 
   p.noFill();
   p.stroke("#cbd5e1");
-  p.strokeWeight(1);
+  p.strokeWeight(1 / scale);
   p.rect(gridOffset, gridOffset, CANVAS_SIZE, CANVAS_SIZE);
 }
 
-function drawBlobHandles(p: P5, blobs: Blob[], selectedBlobId: string | null) {
+function drawBlobHandles(
+  p: P5,
+  blobs: Blob[],
+  selectedBlobId: string | null,
+  scale: number,
+) {
+  const handleRadius = HANDLE_RADIUS / scale;
+
   for (const blob of blobs) {
-    const center = gridToPixel(blob.gx, blob.gy);
+    const center = gridToCanvasPoint(blob.gx, blob.gy);
     const isSelected = blob.id === selectedBlobId;
 
     p.noFill();
     p.stroke(isSelected ? "#0f766e" : "#94a3b8");
-    p.strokeWeight(isSelected ? 2 : 1);
+    p.strokeWeight((isSelected ? 2 : 1) / scale);
     p.circle(center.x, center.y, blob.radius * 2);
 
     p.stroke("#ffffff");
-    p.strokeWeight(4);
+    p.strokeWeight(4 / scale);
     p.fill(isSelected ? "#14b8a6" : "#f97316");
-    p.circle(center.x, center.y, HANDLE_RADIUS * 2);
+    p.circle(center.x, center.y, handleRadius * 2);
 
     p.noStroke();
     p.fill("#0f172a");
-    p.circle(center.x, center.y, 4);
+    p.circle(center.x, center.y, (4 / scale));
   }
 }
 
-function findHitBlob(x: number, y: number, blobs: Blob[]): Blob | null {
+function findHitBlob(x: number, y: number, blobs: Blob[], scale: number): Blob | null {
+  const hitRadius = (HANDLE_RADIUS + 2) / scale;
+
   for (let index = blobs.length - 1; index >= 0; index -= 1) {
     const blob = blobs[index];
-    const center = gridToPixel(blob.gx, blob.gy);
+    const center = gridToCanvasPoint(blob.gx, blob.gy);
     const dx = x - center.x;
     const dy = y - center.y;
 
-    if (Math.sqrt(dx * dx + dy * dy) <= HANDLE_RADIUS + 2) {
+    if (Math.sqrt(dx * dx + dy * dy) <= hitRadius) {
       return blob;
     }
   }
@@ -724,6 +760,33 @@ function findBlobAtGrid(gx: number, gy: number, blobs: Blob[]): Blob | null {
 
 function isInsideCanvas(x: number, y: number): boolean {
   return x >= 0 && x <= CANVAS_SIZE && y >= 0 && y <= CANVAS_SIZE;
+}
+
+function canvasScale(p: P5): number {
+  return Math.max(0.001, Math.min(p.width, p.height) / CANVAS_SIZE);
+}
+
+function renderedPointToCanvasPoint(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+): { x: number; y: number } | null {
+  if (width <= 0 || height <= 0) {
+    return null;
+  }
+
+  return {
+    x: (x / width) * CANVAS_SIZE,
+    y: (y / height) * CANVAS_SIZE,
+  };
+}
+
+function getCanvasHostSize(host: HTMLElement): number {
+  const rect = host.getBoundingClientRect();
+  const size = Math.min(rect.width, rect.height) || rect.width || CANVAS_SIZE;
+
+  return Math.max(1, Math.round(size));
 }
 
 function connectionIncludesBlob(connection: Connection, blobId: string): boolean {

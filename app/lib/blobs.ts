@@ -26,8 +26,6 @@ export type BlobPath = {
 
 export const CANVAS_SIZE = 512;
 export const GRID_SIZE = 32;
-export const GRID_STEP = 16;
-export const GRID_ORIGIN = 0;
 export const DEFAULT_RADIUS = 48;
 export const MIN_RADIUS = 8;
 export const MAX_RADIUS = 160;
@@ -53,18 +51,22 @@ export function clampGooThickness(value: number): number {
   );
 }
 
-export function gridToPixel(gx: number, gy: number): Point {
+export function gridToCanvasPoint(gx: number, gy: number): Point {
   return {
-    x: gx * GRID_STEP + GRID_ORIGIN,
-    y: gy * GRID_STEP + GRID_ORIGIN,
+    x: gridCoordinateToCanvasPosition(gx),
+    y: gridCoordinateToCanvasPosition(gy),
   };
 }
 
-export function pixelToGrid(x: number, y: number): Pick<Blob, "gx" | "gy"> {
+export function canvasPointToGrid(x: number, y: number): Pick<Blob, "gx" | "gy"> {
   return {
-    gx: clampGridCoordinate((x - GRID_ORIGIN) / GRID_STEP),
-    gy: clampGridCoordinate((y - GRID_ORIGIN) / GRID_STEP),
+    gx: clampGridCoordinate((x / CANVAS_SIZE) * GRID_SIZE),
+    gy: clampGridCoordinate((y / CANVAS_SIZE) * GRID_SIZE),
   };
+}
+
+export function gridCoordinateToCanvasPosition(coordinate: number): number {
+  return (coordinate / GRID_SIZE) * CANVAS_SIZE;
 }
 
 export function generateBlobPaths(blobs: Blob[], connections: Connection[]): BlobPath[] {
@@ -73,7 +75,7 @@ export function generateBlobPaths(blobs: Blob[], connections: Connection[]): Blo
     id: blob.id,
     blobIds: [blob.id],
     connectionId: null,
-    d: circlePath(gridToPixel(blob.gx, blob.gy), blob.radius),
+    d: circlePath(gridToCanvasPoint(blob.gx, blob.gy), blob.radius),
   }));
   const bridgePaths = connections.flatMap((connection) => {
     const blobA = blobById.get(connection.aId);
@@ -111,8 +113,8 @@ export function blobPathsToSvg(paths: BlobPath[]): string {
 }
 
 function connectedPairPath(blobA: Blob, blobB: Blob, gooThickness: number): string {
-  const centerA = gridToPixel(blobA.gx, blobA.gy);
-  const centerB = gridToPixel(blobB.gx, blobB.gy);
+  const centerA = gridToCanvasPoint(blobA.gx, blobA.gy);
+  const centerB = gridToCanvasPoint(blobB.gx, blobB.gy);
   const dx = centerB.x - centerA.x;
   const dy = centerB.y - centerA.y;
   const distance = Math.hypot(dx, dy);
