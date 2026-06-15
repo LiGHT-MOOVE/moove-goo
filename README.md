@@ -2,7 +2,7 @@
 
 A compact browser-based editor for drawing connected goo blobs on a fluid 32 x 32 grid canvas, with fixed 512 x 512 vector SVG export.
 
-<img src="public/moove-goo.png" alt="moove-goo editor screenshot" width="720">
+<img src="public/moove-goo.png" alt="moove-goo editor screenshot" style="width:100%; height:auto;">
 
 ## Features
 
@@ -21,15 +21,6 @@ pnpm dev
 ```
 
 Open `http://localhost:3000`.
-
-## Scripts
-
-```bash
-pnpm dev
-pnpm lint
-pnpm build
-pnpm start
-```
 
 ## Project Format
 
