@@ -1,12 +1,12 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { DEFAULT_GOO_THICKNESS, type Blob, type Connection } from "@/app/lib/blobs";
+import { DEFAULT_GOO_THICKNESS, type Blob, type Connection } from "@/app/blobs";
 import {
   DEFAULT_PROJECT,
   type GooProject,
   createDefaultBlob,
   normalizeStoredGooProject,
-} from "@/app/lib/project";
+} from "@/app/project";
 
 type GooStore = {
   project: GooProject;

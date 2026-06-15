@@ -1,27 +1,17 @@
 # moove-goo
 
-A compact browser-based editor for drawing connected goo blobs on a fixed 512px grid canvas, with vector SVG export.
+A compact browser-based editor for drawing connected goo blobs on a fluid 32 x 32 grid canvas, with fixed 512 x 512 vector SVG export.
 
 <img src="public/moove-goo.png" alt="moove-goo editor screenshot" width="720">
 
 ## Features
 
-- 512px by 512px p5 canvas with a 32 x 32 marker grid
+- Fluid p5 canvas with a 32 x 32 marker grid
 - Add, select, drag, resize, and remove blobs
 - Connect blobs with independently adjustable goo bridge thickness
 - Edit, format, apply, and download validated project JSON
 - Persist projects locally with Zustand and localStorage
-- Export drawings as vector SVG paths
-
-## Tech Stack
-
-- Next.js 16
-- React 19
-- TypeScript
-- Tailwind CSS 4
-- p5
-- Zustand
-- Zod
+- Export drawings as fixed 512 x 512 vector SVG paths
 
 ## Getting Started
 
@@ -63,9 +53,10 @@ type GooProject = {
 };
 ```
 
-## Architecture
+## Files
 
-- `app/components/GooBlobEditor.tsx` contains the client editor and p5 integration.
-- `app/lib/blobs.ts` contains pure geometry and SVG path generation.
-- `app/lib/project.ts` contains schema validation and project serialization.
-- `app/store/gooStore.ts` contains persisted Zustand state.
+- `app/page.tsx` renders the editor route.
+- `app/editor.tsx` contains the client editor and p5 integration.
+- `app/blobs.ts` contains pure geometry and SVG path generation.
+- `app/project.ts` contains schema validation and project serialization.
+- `app/store.ts` contains persisted Zustand state.

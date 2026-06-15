@@ -22,13 +22,13 @@ import {
   generateBlobPaths,
   gridCoordinateToCanvasPosition,
   gridToCanvasPoint,
-} from "@/app/lib/blobs";
-import { parseGooProject, serializeGooProject } from "@/app/lib/project";
-import { useGooStore } from "@/app/store/gooStore";
+} from "@/app/blobs";
+import { parseGooProject, serializeGooProject } from "@/app/project";
+import { useGooStore } from "@/app/store";
 
 const HANDLE_RADIUS = 10;
 
-export default function GooBlobEditor() {
+export default function Editor() {
   const project = useGooStore((state) => state.project);
   const selectedBlobId = useGooStore((state) => state.selectedBlobId);
   const setProject = useGooStore((state) => state.setProject);

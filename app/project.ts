@@ -6,7 +6,7 @@ import {
   clampGooThickness,
   clampGridCoordinate,
   clampRadius,
-} from "@/app/lib/blobs";
+} from "@/app/blobs";
 
 export type GooProject = {
   version: 1;

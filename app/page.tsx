@@ -1,5 +1,5 @@
-import GooBlobEditor from "@/app/components/GooBlobEditor";
+import Editor from "@/app/editor";
 
 export default function Home() {
-  return <GooBlobEditor />;
+  return <Editor />;
 }
