@@ -49,9 +49,11 @@ export default function Editor() {
   const blobPathsRef = useRef<BlobPath[]>(generateBlobPaths(blobs, connections));
   const selectedBlobIdRef = useRef<string | null>(selectedBlobId);
   const draggingBlobIdRef = useRef<string | null>(null);
+  const projectFileInputRef = useRef<HTMLInputElement | null>(null);
   const [projectJson, setProjectJson] = useState(() => serializeGooProject(project));
   const [projectJsonDirty, setProjectJsonDirty] = useState(false);
   const [projectJsonError, setProjectJsonError] = useState<string | null>(null);
+  const [projectJsonMessage, setProjectJsonMessage] = useState("");
 
   const selectedBlob = blobs.find((blob) => blob.id === selectedBlobId) ?? null;
   const selectedConnections = useMemo(
@@ -174,9 +176,11 @@ export default function Editor() {
     draggingBlobIdRef.current = null;
     setProjectJsonError(null);
     setProjectJsonDirty(false);
+    setProjectJsonMessage("");
   }, [resetProject]);
 
   const applyProjectJson = useCallback(() => {
+    setProjectJsonMessage("");
     const result = parseGooProject(visibleProjectJson);
 
     if (!result.ok) {
@@ -188,10 +192,12 @@ export default function Editor() {
     setProjectJson(serializeGooProject(result.project));
     setProjectJsonDirty(false);
     setProjectJsonError(null);
+    setProjectJsonMessage("Project applied.");
     draggingBlobIdRef.current = null;
   }, [setProject, visibleProjectJson]);
 
   const formatProjectJson = useCallback(() => {
+    setProjectJsonMessage("");
     const result = parseGooProject(visibleProjectJson);
 
     if (!result.ok) {
@@ -210,12 +216,20 @@ export default function Editor() {
       "application/json;charset=utf-8",
       serializeGooProject(project),
     );
+    setProjectJsonMessage("Applied project downloaded.");
   }, [project]);
+
+  const revertProjectJson = useCallback(() => {
+    setProjectJsonDirty(false);
+    setProjectJsonError(null);
+    setProjectJsonMessage("Draft reverted.");
+  }, []);
 
   const updateProjectJsonDraft = useCallback(
     (value: string) => {
       setProjectJson(value);
       setProjectJsonDirty(true);
+      setProjectJsonMessage("");
 
       if (projectJsonError) {
         setProjectJsonError(null);
@@ -392,6 +406,7 @@ export default function Editor() {
             <h2 className="text-2xl font-semibold tracking-normal text-slate-950">
               moove-goo
             </h2>
+            <p className="mt-1 text-sm text-slate-500">Logo generator for Moove</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -399,14 +414,14 @@ export default function Editor() {
               onClick={resetSketch}
               type="button"
             >
-              Reset
+              Restore defaults
             </button>
             <button
               className="inline-flex min-h-10 items-center justify-center rounded-md border border-transparent bg-gray-900 px-3.5 text-sm font-semibold text-white transition-colors duration-150 hover:bg-slate-700"
               onClick={exportSvg}
               type="button"
             >
-              Export SVG
+              Download SVG
             </button>
           </div>
         </header>
@@ -430,8 +445,14 @@ export default function Editor() {
               </div>
 
               <label className="mt-4 grid gap-2 text-sm font-medium text-slate-700">
-                Project JSON
+                <span className="flex flex-wrap justify-between gap-2">
+                  Project JSON
+                  {projectJsonDirty ? (
+                    <span className="font-normal text-amber-700">Unapplied changes</span>
+                  ) : null}
+                </span>
                 <textarea
+                  aria-label="Project JSON"
                   className="min-h-[260px] resize-y rounded-md border border-slate-300 bg-slate-900 p-3 font-mono text-xs leading-[1.55] text-slate-50 outline-none [tab-size:2] focus:border-teal-700 focus:shadow-[0_0_0_3px_rgb(20_184_166_/_0.16)]"
                   onChange={(event) => updateProjectJsonDraft(event.target.value)}
                   onKeyDown={handleProjectJsonKeyDown}
@@ -440,8 +461,13 @@ export default function Editor() {
                 />
               </label>
 
+              <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                Apply JSON to update the canvas. Download JSON saves the applied project.
+                {" "}⌘ / Ctrl + Enter to apply.
+              </p>
+
               {projectJsonError ? (
-                <p className="mt-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                <p role="alert" className="mt-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
                   {projectJsonError}
                 </p>
               ) : null}
@@ -463,12 +489,56 @@ export default function Editor() {
                 </button>
                 <button
                   className="inline-flex h-9 min-h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3.5 text-sm font-semibold text-slate-950 transition-colors duration-150 hover:border-slate-400 hover:bg-slate-50"
+                  onClick={() => projectFileInputRef.current?.click()}
+                  type="button"
+                >
+                  Load JSON
+                </button>
+                <button
+                  className="inline-flex h-9 min-h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3.5 text-sm font-semibold text-slate-950 transition-colors duration-150 hover:border-slate-400 hover:bg-slate-50"
                   onClick={downloadProjectJson}
                   type="button"
                 >
                   Download JSON
                 </button>
+                <button
+                  className="inline-flex h-9 min-h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3.5 text-sm font-semibold text-slate-950 transition-colors duration-150 hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={!projectJsonDirty}
+                  onClick={revertProjectJson}
+                  type="button"
+                >
+                  Revert edits
+                </button>
               </div>
+              <input
+                ref={projectFileInputRef}
+                type="file"
+                accept=".json,application/json"
+                aria-label="Load project JSON file"
+                className="sr-only"
+                onChange={async (event) => {
+                  const file = event.currentTarget.files?.[0];
+                  event.currentTarget.value = "";
+                  if (!file) return;
+
+                  setProjectJsonMessage("");
+                  try {
+                    if (file.size > 1_000_000) {
+                      throw new Error("Project files must be smaller than 1 MB.");
+                    }
+                    const text = await file.text();
+                    setProjectJson(text);
+                    setProjectJsonDirty(true);
+                    setProjectJsonError(null);
+                    setProjectJsonMessage(`${file.name} loaded. Apply JSON to use it.`);
+                  } catch (error) {
+                    setProjectJsonError(error instanceof Error ? error.message : "Could not read the file.");
+                  }
+                }}
+              />
+              <p role="status" className="mt-3 empty:hidden text-xs text-slate-500">
+                {projectJsonMessage}
+              </p>
             </section>
           </div>
 
