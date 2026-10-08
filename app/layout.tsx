@@ -6,9 +6,34 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
+const title = "Moove Goo";
+const description = "Logo generator for Moove. Draw connected goo blobs, save projects, and export vector SVGs.";
+const image = {
+  url: "/moove-goo.png",
+  width: 1792,
+  height: 2056,
+  alt: "Moove Goo editor preview",
+};
+
 export const metadata: Metadata = {
-  title: "Goo Blob Editor",
-  description: "A grid-based p5 blob editor with partner goo bridges and vector SVG export.",
+  metadataBase: new URL("https://moove-goo.vercel.app/"),
+  title,
+  description,
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    url: "/",
+    siteName: title,
+    title,
+    description,
+    images: [image],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    images: [image],
+  },
 };
 
 export default function RootLayout({
